@@ -7,6 +7,9 @@ public final class Appearance extends Module {
     public final Setting.Choice theme;
     public final Setting.Color accent;
     public final Setting.KeyBind menuKey;
+    public final Setting.Toggle blur;
+    /** Set by the version layer: whether it can blur the game behind menus. */
+    public static boolean canBlur = true;
 
     public final Setting.Color text;
     public final Setting.Color label;
@@ -26,6 +29,8 @@ public final class Appearance extends Module {
         accent.in("Menu");
         menuKey = add(new Setting.KeyBind("menu_key", "Open this menu", "RIGHT_SHIFT"));
         menuKey.in("Menu");
+        blur = add(new Setting.Toggle("blur", "Blur the game behind menus", true));
+        blur.in("Menu").showIf(() -> canBlur);
 
         text = add(new Setting.Color("text", "Value colour", 0xFFFFFFFF, true));
         text.in("HUD defaults");

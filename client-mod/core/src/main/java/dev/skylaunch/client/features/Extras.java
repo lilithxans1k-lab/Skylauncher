@@ -41,7 +41,7 @@ public final class Extras {
 
     /** Hide parts of the vanilla HUD that the SkyBlock widgets replace. */
     public static final class HideVanillaHud extends Module {
-        public final Setting.Toggle hearts, armor, food, xp, sidebar;
+        public final Setting.Toggle hearts, armor, food, xp, sidebar, bossBar;
         /** Set by the version layer: whether it can hide the sidebar. */
         public static boolean canHideSidebar = true;
 
@@ -54,6 +54,7 @@ public final class Extras {
             sidebar = add(new Setting.Toggle("sidebar", "Sidebar (scoreboard)", false));
             sidebar.hint("SkyBlock info keeps working with the sidebar hidden.");
             sidebar.showIf(() -> canHideSidebar);
+            bossBar = add(new Setting.Toggle("boss_bar", "Boss bar", false));
         }
 
         public boolean hide(Setting.Toggle part) {

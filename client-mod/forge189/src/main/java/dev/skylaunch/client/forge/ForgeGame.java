@@ -89,6 +89,23 @@ final class ForgeGame implements Game {
         return out;
     }
 
+    public int hurtTime() {
+        return mc.thePlayer == null ? 0 : mc.thePlayer.hurtTime;
+    }
+
+    public long dayTime() {
+        return mc.theWorld == null ? -1 : mc.theWorld.getWorldTime();
+    }
+
+    public String serverAddress() {
+        if (mc.isSingleplayer() || mc.getCurrentServerData() == null) return null;
+        return mc.getCurrentServerData().serverIP;
+    }
+
+    public float saturation() {
+        return mc.thePlayer == null ? 0 : mc.thePlayer.getFoodStats().getSaturationLevel();
+    }
+
     public String scoreboardTitle() {
         if (mc.theWorld == null) return "";
         ScoreObjective o = mc.theWorld.getScoreboard().getObjectiveInDisplaySlot(1);

@@ -14,16 +14,16 @@ It comes in two builds that share one codebase:
 
 ## What's in the menu
 
-- **HUD**: FPS, CPS, ping, coordinates (with facing), clock, keystrokes, speed, memory, session timer, and *Hide vanilla HUD* (hearts, armor, hunger, XP bar, sidebar)
+- **HUD**: FPS, CPS, ping, coordinates (with facing), clock, keystrokes, speed, memory, session timer, compass bar, stopwatch (pick your own start/stop and reset keys), day counter, server address, saturation, and *Hide vanilla HUD* (hearts, armor, hunger, XP bar, sidebar, boss bar)
 - **SkyBlock**
   - *SkyBlock info*: purse/piggy, bits, bank, motes, copper, location, server, profile, SkyBlock date and time. Each line can be switched on or off, with full or compact numbers (12.4M) and your own coin and bits colours.
   - *Health & mana bars*: health, absorption, mana, overflow mana and defense from the action bar, either stacked or side by side. Bar width, height and every colour are adjustable.
   - *Coin tracker*: coins made this session and per hour from your purse. It can count gains only, ignores profile switches, and has an optional reset key.
   - *Skill tracker*: progress bar, XP per hour, time to the next level, and XP this session, for your latest skill or all recent ones. It hides itself when you go idle.
-- **Combat & QoL**: armor status with durability, potion effects, zoom (hold C, scroll to adjust), toggle sprint (V), chat timestamps
+- **Combat & QoL**: armor status with durability, potion effects, zoom (hold C, scroll to adjust), toggle sprint & sneak (V, sneak key optional), reach display, combo counter, chat timestamps
 - **Visual**: fullbright, custom crosshair (cross, dot, circle, T), hit colour, block outline, no view bobbing (on by default), no hurt camera, no fire overlay
 - **Share world** (in the menu header, singleplayer on 26.2): opens your world to friends through e4mc and copies an invite with your exact mod list. See the main README.
-- **Appearance**: dark/light theme, accent colour, the menu key, and the default look for every HUD element (value and label colours, background, rounded corners, padding, text shadow)
+- **Appearance**: dark/light theme, accent colour, the menu key, background blur behind menus (26.2), and the default look for every HUD element (value and label colours, background, rounded corners, padding, text shadow)
 
 Every HUD element also has its own size, background, shadow and colour overrides. **Edit HUD** lets you drag elements, scroll to resize, and right-click for settings. Elements snap to screen edges, the centre lines and each other.
 
@@ -63,7 +63,7 @@ None of this has been compiled against Minecraft yet. My workspace couldn't reac
 
 ## Hypixel rules
 
-Everything here is display or quality-of-life: HUD elements, zoom, fullbright, crosshair, toggle sprint. That's the same category Lunar and Badlion ship. Nothing automates gameplay. Check https://hypixel.net/allowed-modifications if you add features.
+Everything here is display or quality-of-life: HUD elements, zoom, fullbright, crosshair, toggle sprint/sneak, reach and combo displays. That's the same category Lunar and Badlion ship. Nothing automates gameplay. Check https://hypixel.net/allowed-modifications if you add features.
 
 ## Credits
 

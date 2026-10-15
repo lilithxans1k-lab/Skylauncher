@@ -42,6 +42,7 @@ public final class SkyLaunchFabric implements ClientModInitializer {
             client.tick();
             pollKeys(mc);
             applyToggleSprint(mc);
+            applyToggleSneak(mc);
             HitColourHook.update(client);
         });
 
@@ -70,6 +71,7 @@ public final class SkyLaunchFabric implements ClientModInitializer {
         hideWhen(VanillaHudElements.INFO_BAR, () -> hide.hide(hide.xp));
         hideWhen(VanillaHudElements.EXPERIENCE_LEVEL, () -> hide.hide(hide.xp));
         hideWhen(VanillaHudElements.SCOREBOARD, () -> hide.hide(hide.sidebar));
+        hideWhen(VanillaHudElements.BOSS_BAR, () -> hide.hide(hide.bossBar));
 
         HudElementRegistry.replaceElement(VanillaHudElements.CROSSHAIR, vanilla -> (graphics, delta) -> {
             Minecraft mc = Minecraft.getInstance();
@@ -115,6 +117,19 @@ public final class SkyLaunchFabric implements ClientModInitializer {
             boolean down = client.game.keyDown(code);
             if (down && held.add(code)) client.onKey(code);
             else if (!down) held.remove(code);
+        }
+    }
+
+    private boolean sneakHeldByUs;
+
+    private void applyToggleSneak(Minecraft mc) {
+        boolean want = client.toggleSprint.enabled && client.toggleSprint.sneakToggled && mc.player != null && mc.gui.screen() == null;
+        if (want) {
+            mc.options.keyShift.setDown(true);
+            sneakHeldByUs = true;
+        } else if (sneakHeldByUs) {
+            mc.options.keyShift.setDown(false);
+            sneakHeldByUs = false;
         }
     }
 

@@ -102,6 +102,33 @@ final class FabricGame implements Game {
     }
 
     @Override
+    public int hurtTime() {
+        Object v = Reflect.field(mc.player, "hurtTime");
+        return v instanceof Integer ? (Integer) v : 0;
+    }
+
+    @Override
+    public long dayTime() {
+        if (mc.level == null) return -1;
+        Object v = Reflect.call(mc.level, "getDayTime");
+        if (!(v instanceof Long)) v = Reflect.call(mc.level, "getGameTime");
+        return v instanceof Long ? (Long) v : -1;
+    }
+
+    @Override
+    public String serverAddress() {
+        if (mc.hasSingleplayerServer() || mc.getCurrentServer() == null) return null;
+        return mc.getCurrentServer().ip;
+    }
+
+    @Override
+    public float saturation() {
+        if (mc.player == null) return 0;
+        Object v = Reflect.call(mc.player.getFoodData(), "getSaturationLevel");
+        return v instanceof Float ? (Float) v : 0;
+    }
+
+    @Override
     public String scoreboardTitle() {
         if (mc.level == null) return "";
         Objective o = mc.level.getScoreboard().getDisplayObjective(DisplaySlot.SIDEBAR);

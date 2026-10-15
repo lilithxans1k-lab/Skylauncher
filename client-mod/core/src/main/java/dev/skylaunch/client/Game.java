@@ -31,6 +31,18 @@ public interface Game {
 
     List<EffectInfo> effects();
 
+    /** Ticks left on the "just got hit" red flash (0 when not hurt). */
+    int hurtTime();
+
+    /** World time in ticks (24000 per day), or -1 when unknown. */
+    long dayTime();
+
+    /** Address of the multiplayer server you're on, or null in singleplayer/menus. */
+    String serverAddress();
+
+    /** Hidden hunger saturation (0-20). */
+    float saturation();
+
     // --- Hypixel data -------------------------------------------------------
     /** Sidebar title with formatting codes removed, or "" when there is no sidebar. */
     String scoreboardTitle();

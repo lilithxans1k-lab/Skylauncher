@@ -27,7 +27,11 @@ final class ScreenWrapper extends Screen {
 
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-        // The shared screens draw their own dimmed backdrop; skip vanilla's blur.
+        // Vanilla's background blurs the game behind the screen. The HUD editor needs a clear
+        // view of the HUD, and the blur can be turned off under Appearance.
+        if (!(ui instanceof dev.skylaunch.client.ui.HudEditorScreen) && Client.get().appearance.blur.value) {
+            super.extractBackground(graphics, mouseX, mouseY, a);
+        }
     }
 
     @Override

@@ -64,6 +64,9 @@ public final class Client {
     public final Extras.HideVanillaHud hideVanillaHud;
     public final Extras.ChatTimestamps chatTimestamps;
     public final Extras.Coins coinHud;
+    public final dev.skylaunch.client.features.Lunarish.Reach reach;
+    public final dev.skylaunch.client.features.Lunarish.Combo combo;
+    public final dev.skylaunch.client.features.Lunarish.Stopwatch stopwatch;
 
     /** e4mc address of the shared world, once e4mc has announced it. */
     public String shareAddress;
@@ -88,6 +91,11 @@ public final class Client {
         add(new Extras.Speed());
         add(new Extras.Memory());
         add(new Extras.SessionTimer());
+        add(new dev.skylaunch.client.features.Lunarish.Compass());
+        stopwatch = add(new dev.skylaunch.client.features.Lunarish.Stopwatch());
+        add(new dev.skylaunch.client.features.Lunarish.DayCounter());
+        add(new dev.skylaunch.client.features.Lunarish.ServerAddress());
+        add(new dev.skylaunch.client.features.Lunarish.Saturation());
         hideVanillaHud = add(new Extras.HideVanillaHud());
         add(new Keystrokes());
         CombatQol.Armor armor = new CombatQol.Armor();
@@ -96,6 +104,8 @@ public final class Client {
         zoom = add(new CombatQol.Zoom());
         toggleSprint = add(new CombatQol.ToggleSprint());
         chatTimestamps = add(new Extras.ChatTimestamps());
+        reach = add(new dev.skylaunch.client.features.Lunarish.Reach());
+        combo = add(new dev.skylaunch.client.features.Lunarish.Combo());
         add(new SkyBlockHud.Stats());
         add(new SkyBlockHud.Bars());
         add(new SkyBlockHud.Skills());
@@ -210,6 +220,12 @@ public final class Client {
         sb.readActionBar(raw, System.currentTimeMillis());
     }
 
+    /** You attacked an entity from `distance` blocks away (eye to hit point). */
+    public void onAttackEntity(double distance) {
+        reach.hit(distance);
+        combo.hit();
+    }
+
     /** Mouse button pressed in the world (0 = left, 1 = right). */
     public void onMouseClick(int button) {
         cps.click(button);
@@ -229,6 +245,18 @@ public final class Client {
         }
         if (toggleSprint.enabled && keyCode == toggleSprint.key.code) {
             toggleSprint.pressed();
+            return true;
+        }
+        if (toggleSprint.enabled && keyCode == toggleSprint.sneakKey.code) {
+            toggleSprint.sneakPressed();
+            return true;
+        }
+        if (stopwatch.enabled && keyCode == stopwatch.toggleKey.code) {
+            stopwatch.toggle();
+            return true;
+        }
+        if (stopwatch.enabled && keyCode == stopwatch.resetKey.code) {
+            stopwatch.reset();
             return true;
         }
         if (coinHud.enabled && keyCode == coinHud.resetKey.code) {
@@ -304,7 +332,8 @@ public final class Client {
 
     /** Keys the version layer should watch while playing (menu, toggle sprint, coin reset). */
     public int[] watchedKeys() {
-        return new int[]{appearance.menuKey.code, toggleSprint.key.code, coinHud.resetKey.code};
+        return new int[]{appearance.menuKey.code, toggleSprint.key.code, toggleSprint.sneakKey.code,
+                stopwatch.toggleKey.code, stopwatch.resetKey.code, coinHud.resetKey.code};
     }
 
     /** Player speed, averaged over the last half second. */

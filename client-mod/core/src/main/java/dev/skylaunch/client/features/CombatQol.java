@@ -166,13 +166,17 @@ public final class CombatQol {
     /** Sprint stays on after one press. The version layer holds the sprint key while toggled. */
     public static final class ToggleSprint extends TextHud {
         public final Setting.KeyBind key;
+        public final Setting.KeyBind sneakKey;
         final Setting.Toggle showText;
         public boolean toggled;
+        public boolean sneakToggled;
 
         public ToggleSprint() {
-            super("toggle_sprint", "Toggle sprint", "Press once to keep sprinting.", Category.COMBAT, false, 0.0, 0.97);
-            key = add(new Setting.KeyBind("key", "Toggle key", "V"));
+            super("toggle_sprint", "Toggle sprint & sneak", "Press once to keep sprinting or sneaking.", Category.COMBAT, false, 0.0, 0.97);
+            key = add(new Setting.KeyBind("key", "Toggle sprint key", "V"));
             key.in("Controls");
+            sneakKey = add(new Setting.KeyBind("sneak_key", "Toggle sneak key", null));
+            sneakKey.in("Controls").hint("Unbound by default. Pick a key you don't use for anything else.");
             showText = add(new Setting.Toggle("show_text", "Show status on screen", true));
             showText.in("Controls");
             labels.setDefault(false);
@@ -184,18 +188,24 @@ public final class CombatQol {
             toggled = !toggled;
         }
 
+        public void sneakPressed() {
+            sneakToggled = !sneakToggled;
+        }
+
         @Override
         protected void onDisable() {
             toggled = false;
+            sneakToggled = false;
         }
 
         @Override
         public boolean active(Client c) {
-            return showText.value && (toggled || editing);
+            return showText.value && (toggled || sneakToggled || editing);
         }
 
         protected void rows(Client c, List<Row> out) {
-            out.add(new Row(null, c.game.sprinting() || editing ? "Sprinting (toggled)" : "Sprint toggled"));
+            if (sneakToggled) out.add(new Row(null, "Sneaking (toggled)"));
+            else out.add(new Row(null, c.game.sprinting() || editing ? "Sprinting (toggled)" : "Sprint toggled"));
         }
     }
 

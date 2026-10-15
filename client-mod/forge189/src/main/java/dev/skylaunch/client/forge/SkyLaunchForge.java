@@ -49,6 +49,7 @@ public final class SkyLaunchForge {
 
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
+        dev.skylaunch.client.module.Appearance.canBlur = false; // 1.8.9 has no menu blur
         client = new Client(new ForgeGame());
         MinecraftForge.EVENT_BUS.register(this);
         FMLCommonHandler.instance().bus().register(this);
@@ -61,6 +62,7 @@ public final class SkyLaunchForge {
         client.tick();
         pollKeys(mc);
         applyToggleSprint(mc);
+        applyToggleSneak(mc);
         applyFullbright(mc);
         applyViewBob(mc);
     }
@@ -91,6 +93,20 @@ public final class SkyLaunchForge {
             boolean down = client.game.keyDown(code);
             if (down && held.add(code)) client.onKey(code);
             else if (!down) held.remove(code);
+        }
+    }
+
+    private boolean sneakHeldByUs;
+
+    private void applyToggleSneak(Minecraft mc) {
+        int sneakKey = mc.gameSettings.keyBindSneak.getKeyCode();
+        boolean want = client.toggleSprint.enabled && client.toggleSprint.sneakToggled && mc.thePlayer != null && mc.currentScreen == null;
+        if (want) {
+            KeyBinding.setKeyBindState(sneakKey, true);
+            sneakHeldByUs = true;
+        } else if (sneakHeldByUs) {
+            KeyBinding.setKeyBindState(sneakKey, false);
+            sneakHeldByUs = false;
         }
     }
 
@@ -137,6 +153,11 @@ public final class SkyLaunchForge {
     @SubscribeEvent
     public void onMouse(MouseEvent event) {
         if (event.buttonstate && (event.button == 0 || event.button == 1)) client.onMouseClick(event.button);
+        Minecraft mc = Minecraft.getMinecraft();
+        if (event.buttonstate && event.button == 0 && mc.objectMouseOver != null && mc.thePlayer != null
+                && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY && mc.objectMouseOver.hitVec != null) {
+            client.onAttackEntity(mc.thePlayer.getPositionEyes(1f).distanceTo(mc.objectMouseOver.hitVec));
+        }
         if (event.dwheel != 0 && client.onScroll(event.dwheel > 0 ? 1 : -1)) event.setCanceled(true);
     }
 
@@ -148,6 +169,7 @@ public final class SkyLaunchForge {
             case ARMOR: if (hide.hide(hide.armor)) { event.setCanceled(true); return; } break;
             case FOOD: if (hide.hide(hide.food)) { event.setCanceled(true); return; } break;
             case EXPERIENCE: if (hide.hide(hide.xp)) { event.setCanceled(true); return; } break;
+            case BOSSHEALTH: if (hide.hide(hide.bossBar)) { event.setCanceled(true); return; } break;
             default: break;
         }
         if (event.type == RenderGameOverlayEvent.ElementType.CROSSHAIRS && client.crosshair.enabled) {
