@@ -1,7 +1,7 @@
 {
   "name": "skylaunch",
   "productName": "SkyLaunch",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A Minecraft launcher built for Hypixel SkyBlock, with mod presets for modern Fabric and 1.8.9 Forge.",
   "main": "src/main.js",
   "author": "lilith",

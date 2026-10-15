@@ -39,7 +39,7 @@ import java.util.Map;
  */
 public final class Client {
     public static final String NAME = "SkyLaunch";
-    public static final String VERSION = "0.1.0";
+    public static final String VERSION = "0.1.1";
     private static Client instance;
 
     public final Game game;
