@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; img-src 'self' data: https://cdn.modrinth.com https://mc-heads.net; style-src 'self'; script-src 'self'" />
+  <title>SkyLaunch</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand drag">SkyLaunch</div>
+      <nav class="profiles" id="profiles" aria-label="Profiles"></nav>
+      <button class="side-action" id="newProfile">New profile</button>
+      <div class="account" id="account"></div>
+    </aside>
+
+    <main class="main">
+      <div class="titlebar drag"></div>
+      <header class="header" id="header"></header>
+      <div class="tabs" role="tablist" id="tabs">
+        <button role="tab" data-tab="mods" aria-selected="true">Mods</button>
+        <button role="tab" data-tab="browse" aria-selected="false">Browse Modrinth</button>
+        <button role="tab" data-tab="settings" aria-selected="false">Settings</button>
+        <button role="tab" data-tab="logs" aria-selected="false">Logs</button>
+      </div>
+      <section class="panel" id="panel"></section>
+    </main>
+  </div>
+
+  <dialog id="dialog"></dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+[
+  {
+    "modid": "${modid}",
+    "name": "SkyLaunch Client",
+    "description": "In-game mods and a clean, customizable HUD for Hypixel SkyBlock. Press Right Shift.",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "",
+    "updateUrl": "",
+    "authorList": ["lilith"],
+    "credits": "Built on the Forge 1.8.9 template by Linnea Gräf.",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  }
+]

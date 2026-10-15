@@ -1,0 +1,50 @@
+{
+  "name": "skylaunch",
+  "productName": "SkyLaunch",
+  "version": "0.1.0",
+  "description": "A Minecraft launcher built for Hypixel SkyBlock, with mod presets for modern Fabric and 1.8.9 Forge.",
+  "main": "src/main.js",
+  "author": "lilith",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis",
+    "check": "node scripts/check.js",
+    "build:client": "node scripts/build-client.js",
+    "test:client": "node scripts/test-client.js"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "minecraft-launcher-core": "^3.18.2",
+    "msmc": "^5.0.5"
+  },
+  "devDependencies": {
+    "electron": "^44.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "dev.skylaunch.app",
+    "productName": "SkyLaunch",
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "extraResources": [
+      {
+        "from": "resources/client",
+        "to": "client",
+        "filter": [
+          "*.jar"
+        ]
+      }
+    ]
+  }
+}

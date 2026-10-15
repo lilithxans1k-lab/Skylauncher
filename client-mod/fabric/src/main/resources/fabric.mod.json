@@ -1,0 +1,27 @@
+{
+	"schemaVersion": 1,
+	"id": "skylaunch",
+	"version": "${version}",
+	"name": "SkyLaunch Client",
+	"description": "In-game mods and a clean, customizable HUD for Hypixel SkyBlock. Press Right Shift.",
+	"authors": [
+		"lilith"
+	],
+	"license": "MIT",
+	"icon": "assets/skylaunch/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"dev.skylaunch.client.fabric.SkyLaunchFabric"
+		]
+	},
+	"mixins": [
+		"skylaunch.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

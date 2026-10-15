@@ -1,0 +1,14 @@
+{
+	"required": true,
+	"package": "dev.skylaunch.client.fabric.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"CameraMixin",
+		"MinecraftMixin",
+		"MouseHandlerMixin",
+		"OptionInstanceMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
