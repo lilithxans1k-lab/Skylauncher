@@ -252,3 +252,16 @@ dialog[open] { display: flex; flex-direction: column; }
 .join-mods li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 2px; border-bottom: 1px solid var(--line); font-size: 13px; }
 .join-mods .ok { color: var(--muted); }
 .join-mods .todo { color: var(--accent); }
+
+/* Mods / Shaders switch */
+.seg { display: inline-flex; gap: 2px; padding: 2px; margin-bottom: 12px; border-radius: var(--radius); background: var(--selected); }
+.seg button { border: 0; background: none; padding: 4px 16px; border-radius: 4px; cursor: pointer; color: var(--muted); }
+.seg button[aria-selected="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
+
+/* Shader packs */
+.section-row { display: flex; align-items: baseline; gap: 12px; }
+.section-actions { margin-left: auto; display: flex; gap: 14px; font-weight: 400; }
+.section-actions .link { font-size: 12px; }
+.shader-note { margin-top: 2px; }
+.in-use { font-size: 12px; font-weight: 600; color: var(--accent); padding: 0 8px; }
+.row.off-soft .icon { opacity: 0.75; }

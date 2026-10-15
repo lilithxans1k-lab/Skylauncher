@@ -35,6 +35,14 @@ contextBridge.exposeInMainWorld('sky', {
     setEnabled: call('mods:setEnabled'),
     remove: call('mods:remove'),
   },
+  shaders: {
+    list: call('shaders:list'),
+    add: call('shaders:add'),
+    use: call('shaders:use'),
+    remove: call('shaders:remove'),
+    pickFiles: call('shaders:pickFiles'),
+    addFiles: call('shaders:addFiles'),
+  },
   auth: {
     get: call('auth:get'),
     signIn: call('auth:signIn'),

@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const paths = require('./paths');
 const store = require('./store');
 const modrinth = require('./modrinth');
-const { download } = require('./net');
+const { download, getJson } = require('./net');
 const { getPreset, FORGE_189 } = require('./presets');
 const clientMod = require('./clientmod');
 
@@ -276,6 +276,132 @@ async function changeVersion(id, mcVersion, onProgress) {
   return { skipped };
 }
 
+// --- Shader packs -------------------------------------------------------------
+// Packs live in <profile>/shaderpacks and run through Iris (which brings Sodium).
+// Iris reads which pack to use from config/iris.properties.
+
+const shaderDir = (id) => path.join(paths.instanceDir(id), 'shaderpacks');
+const irisConfig = (id) => path.join(paths.instanceDir(id), 'config', 'iris.properties');
+
+function readIris(id) {
+  const out = new Map();
+  try {
+    for (const line of fs.readFileSync(irisConfig(id), 'utf8').split(/\r?\n/)) {
+      const m = line.match(/^\s*([^#=]+?)\s*=\s*(.*)$/);
+      if (m) out.set(m[1], m[2]);
+    }
+  } catch { /* no config yet */ }
+  return out;
+}
+
+function writeIris(id, patch) {
+  const props = readIris(id);
+  for (const [k, v] of Object.entries(patch)) props.set(k, String(v));
+  fs.mkdirSync(path.dirname(irisConfig(id)), { recursive: true });
+  const body = [...props].map(([k, v]) => `${k}=${v}`).join('\n');
+  fs.writeFileSync(irisConfig(id), `#Iris settings (shader pack chosen in SkyLaunch)\n${body}\n`);
+}
+
+function hasIris(inst) {
+  return inst.mods.some((m) => /(^|[^a-z])iris/i.test(`${m.title} ${m.file}`));
+}
+
+/** Shader packs in the profile, with which one is in use. */
+function listShaders(id) {
+  const inst = get(id);
+  const dir = shaderDir(id);
+  if (!fs.existsSync(dir)) return { packs: [], active: null, enabled: false, iris: hasIris(inst) };
+  const known = new Map((inst.shaders || []).map((s) => [s.file, s]));
+  const iris = readIris(id);
+  const enabled = iris.get('enableShaders') !== 'false' && !!iris.get('shaderPack');
+  const packs = fs.readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() || /\.zip$/i.test(e.name))
+    .map((e) => {
+      const meta = known.get(e.name);
+      return {
+        file: e.name,
+        title: meta ? meta.title : e.name.replace(/\.zip$/i, ''),
+        version: meta ? meta.versionNumber : null,
+        projectId: meta ? meta.projectId : null,
+        icon: meta ? meta.icon : null,
+        source: meta ? 'modrinth' : 'local',
+      };
+    })
+    .sort((a, b) => a.title.localeCompare(b.title));
+  return { packs, active: enabled ? iris.get('shaderPack') : null, enabled, iris: hasIris(inst) };
+}
+
+/** Download a shader pack from Modrinth (and Iris if the profile doesn't have it). */
+async function addShader(id, slug, onProgress = () => {}, versionId = null, meta = {}) {
+  const inst = get(id);
+  if (inst.loader !== 'fabric') {
+    throw new Error('Shaders on 1.8.9 need OptiFine, which SkyLaunch can\'t download for you. Use a modern profile for shaders.');
+  }
+  if (!hasIris(inst)) {
+    onProgress('Adding Iris so shaders can run', 0);
+    try {
+      await addModrinthMod(id, 'iris', onProgress);
+    } catch {
+      throw new Error(`Iris (the shader mod) isn't available for Minecraft ${inst.mcVersion} yet, so shaders can't run on this profile.`);
+    }
+  }
+  onProgress('Finding the shader pack', 0);
+  let build;
+  if (versionId) {
+    build = await getJson(`https://api.modrinth.com/v2/version/${encodeURIComponent(versionId)}`);
+  } else {
+    // Prefer a build made for this Minecraft version, otherwise the newest Iris build.
+    build = modrinth.pickBuild(await modrinth.projectVersions(slug, 'iris', inst.mcVersion))
+      || modrinth.pickBuild(await modrinth.projectVersions(slug, 'iris'));
+  }
+  if (!build) throw new Error('That shader pack has no Iris version to download.');
+  const file = build.files.find((f) => f.primary) || build.files[0];
+  fs.mkdirSync(shaderDir(id), { recursive: true });
+  await download(file.url, path.join(shaderDir(id), file.filename), {
+    sha1: file.hashes && file.hashes.sha1,
+    onProgress: (r, t) => onProgress(`Downloading ${meta.title || file.filename}`, t ? r / t : 0),
+  });
+
+  const fresh = get(id);
+  const previous = (fresh.shaders || []).filter((s) => s.projectId === build.project_id && s.file !== file.filename);
+  for (const old of previous) fs.rmSync(path.join(shaderDir(id), old.file), { recursive: true, force: true });
+  fresh.shaders = [
+    ...(fresh.shaders || []).filter((s) => s.projectId !== build.project_id),
+    { file: file.filename, projectId: build.project_id, versionId: build.id, versionNumber: build.version_number, title: meta.title || file.filename, icon: meta.icon || null },
+  ];
+  save(fresh);
+  // First pack (or a newer build of the one in use) becomes the active one.
+  const current = listShaders(id);
+  if (!current.active || previous.some((p) => p.file === current.active)) setActiveShader(id, file.filename);
+  onProgress('Shader pack added', 1);
+  return { file: file.filename };
+}
+
+/** Use this pack, or turn shaders off with null. */
+function setActiveShader(id, file) {
+  if (file) writeIris(id, { shaderPack: file, enableShaders: true });
+  else writeIris(id, { enableShaders: false });
+}
+
+function removeShader(id, file) {
+  fs.rmSync(path.join(shaderDir(id), path.basename(file)), { recursive: true, force: true });
+  const inst = get(id);
+  inst.shaders = (inst.shaders || []).filter((s) => s.file !== file);
+  save(inst);
+  if (readIris(id).get('shaderPack') === file) writeIris(id, { shaderPack: '', enableShaders: false });
+}
+
+function addLocalShaders(id, files) {
+  fs.mkdirSync(shaderDir(id), { recursive: true });
+  const added = [];
+  for (const f of files) {
+    if (!/\.zip$/i.test(f)) continue;
+    fs.copyFileSync(f, path.join(shaderDir(id), path.basename(f)));
+    added.push(path.basename(f));
+  }
+  return added;
+}
+
 /** Tag a profile as the one used for joining this host's shared worlds. */
 function markShared(id, host) {
   const inst = get(id);
@@ -291,6 +417,7 @@ function clientModStatus(id) {
 }
 
 module.exports = {
+  listShaders, addShader, setActiveShader, removeShader, addLocalShaders,
   clientModStatus,
   markShared,
   list, get, create, update, remove, versionChoices, listMods, installPreset,

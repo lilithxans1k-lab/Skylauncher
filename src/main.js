@@ -128,10 +128,24 @@ app.whenReady().then(() => {
     const inst = instances.get(id);
     return modrinth.search(q, inst.loader, inst.mcVersion, opts);
   });
-  handle('mods:builds', (id, projectId) => {
+  handle('mods:builds', (id, projectId, type) => {
     const inst = instances.get(id);
-    return modrinth.compatibleBuilds(projectId, inst.loader, inst.mcVersion);
+    return modrinth.compatibleBuilds(projectId, type === 'shader' ? 'iris' : inst.loader, inst.mcVersion);
   });
+
+  handle('shaders:list', (id) => instances.listShaders(id));
+  handle('shaders:add', (id, slug, versionId, meta) => instances.addShader(id, slug, progress, versionId, meta));
+  handle('shaders:use', (id, file) => instances.setActiveShader(id, file));
+  handle('shaders:remove', (id, file) => instances.removeShader(id, file));
+  handle('shaders:pickFiles', async (id) => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      title: 'Add shader packs',
+      filters: [{ name: 'Shader packs', extensions: ['zip'] }],
+      properties: ['openFile', 'multiSelections'],
+    });
+    return canceled ? [] : instances.addLocalShaders(id, filePaths);
+  });
+  handle('shaders:addFiles', (id, files) => instances.addLocalShaders(id, files));
   handle('mods:addModrinth', (id, ref, versionId) => instances.addModrinthMod(id, ref, progress, versionId));
   handle('mods:addFiles', (id, files) => instances.addLocalFiles(id, files));
   handle('mods:pickFiles', async (id) => {

@@ -132,8 +132,11 @@ async function resolveMods({ required = [], optional = [] }, loader, gameVersion
  * sort: relevance | downloads | follows | newest | updated
  * category: a Modrinth category such as "optimization", or "" for all.
  */
-async function search(query, loader, gameVersion, { sort = 'relevance', category = '', offset = 0, limit = 20 } = {}) {
-  const facets = [[`categories:${loader}`], [`versions:${gameVersion}`], ['project_type:mod']];
+async function search(query, loader, gameVersion, { sort = 'relevance', category = '', offset = 0, limit = 20, type = 'mod' } = {}) {
+  // Shader packs run through Iris on Fabric, so filter on Iris support instead of the mod loader.
+  const facets = type === 'shader'
+    ? [['categories:iris'], [`versions:${gameVersion}`], ['project_type:shader']]
+    : [[`categories:${loader}`], [`versions:${gameVersion}`], ['project_type:mod']];
   if (category) facets.push([`categories:${category}`]);
   const url = `${API}/search?query=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}&index=${encodeURIComponent(sort)}&facets=${enc(facets)}`;
   const res = await getJson(url);
@@ -166,6 +169,6 @@ async function compatibleBuilds(idOrSlug, loader, gameVersion) {
 }
 
 module.exports = {
-  resolveMods, search, compatibleBuilds, newestCommonVersion, versionsForPicker, supportedGameVersions,
+  resolveMods, search, compatibleBuilds, projectVersions, pickBuild, newestCommonVersion, versionsForPicker, supportedGameVersions,
   compareVersions, parseRelease, sortNewestFirst,
 };

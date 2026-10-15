@@ -10,6 +10,7 @@ A Minecraft launcher for Hypixel SkyBlock. Sign in with Microsoft, pick a preset
   - Modern Fabric: Skyblocker, SkyHanni, Firmament, Performance only, Empty
   - 1.8.9 Forge: NEU + SkyHanni, SkyHanni, Empty
 - **Browse Modrinth** tab: search, sort, filter by category (or SkyBlock), and install the newest build or pick an exact version. Required dependencies come along automatically. Results only show mods that fit the profile's Minecraft version and loader.
+- **Shaders from Modrinth**: on the Browse tab, switch to **Shaders** to search packs that work with the profile's Minecraft version. Install adds the pack plus Iris (the shader mod, which brings Sodium), and switches it on. Pick which pack is in use, or turn shaders off, under **Shader packs** on the Mods tab. Your own `.zip` packs can be dropped on the window. Modern (Fabric) profiles only; 1.8.9 shaders need OptiFine, which can't be downloaded automatically.
 - **Your own files**: drag `.jar` files onto the window or use Add .jar files.
 - **Looks like Windows 11**: follows your light/dark setting and uses your Windows accent colour.
 - Modern presets pick the **newest Minecraft version every required mod supports**, and you can switch versions later — mods are re-fetched for the new version.

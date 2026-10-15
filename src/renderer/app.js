@@ -29,7 +29,8 @@ const state = {
   busy: null, // { label, fraction }
   logs: [],
   mods: [],
-  browse: { query: '', sort: 'relevance', category: '', skyblock: false, hits: [], total: 0, loading: false, error: null, forId: null },
+  shaders: { packs: [], active: null, enabled: false, iris: false },
+  browse: { type: 'mod', query: '', sort: 'relevance', category: '', skyblock: false, hits: [], total: 0, loading: false, error: null, forId: null },
 };
 
 // ---------- feedback
@@ -75,6 +76,11 @@ async function refreshInstances(selectId) {
   renderProfiles();
   renderHeader();
   await renderPanel();
+}
+
+async function refreshShaders() {
+  const inst = current();
+  state.shaders = inst ? await sky.shaders.list(inst.id) : { packs: [], active: null, enabled: false, iris: false };
 }
 
 async function refreshMods() {
@@ -224,6 +230,7 @@ async function renderPanel() {
 // ---------- Mods tab
 async function renderMods(panel, inst) {
   await refreshMods();
+  await refreshShaders();
   const preset = presetOf(inst);
   let clientStatus = 'not-built';
   try { clientStatus = await sky.mods.clientStatus(inst.id); } catch { /* shown as unavailable */ }
@@ -256,9 +263,45 @@ async function renderMods(panel, inst) {
       h('strong', { text: inst.presetInstalledAt || !preset ? 'No mods yet' : 'Preset mods install when you press Play' }),
       'Browse Modrinth, or drag .jar files here.'));
   }
+  sections.push(...shaderSection(inst));
   panel.replaceChildren(toolbar, ...sections,
-    h('p', { class: 'note' }, 'Only use mods Hypixel allows; macros and auto-clickers get accounts banned. ',
+    h('p', { class: 'note' }, 'On Hypixel, only use mods Hypixel allows; macros and auto-clickers get accounts banned. ',
       h('button', { class: 'link', onclick: () => sky.app.openExternal('https://hypixel.net/allowed-modifications'), text: 'Allowed mods' })));
+}
+
+// Shader packs (Iris) for this profile.
+function shaderSection(inst) {
+  const sh = state.shaders;
+  const title = h('div', { class: 'section-title section-row' },
+    h('span', { text: sh.packs.length ? `Shader packs (${sh.packs.length})` : 'Shader packs' }),
+    inst.loader === 'fabric' && h('span', { class: 'section-actions' },
+      sh.enabled && h('button', { class: 'link', text: 'Turn shaders off', onclick: async () => { await attempt(() => sky.shaders.use(inst.id, null)); renderPanel(); } }),
+      h('button', { class: 'link', text: 'Browse shaders', onclick: () => { state.browse.type = 'shader'; state.browse.category = ''; state.browse.forId = null; selectTab('browse'); } }),
+      h('button', { class: 'link', text: 'Add .zip', onclick: async () => {
+        const added = await attempt(() => sky.shaders.pickFiles(inst.id));
+        if (added && added.length) { toast(`Added ${added.length} shader pack${added.length === 1 ? '' : 's'}`); renderPanel(); }
+      } })));
+  if (inst.loader !== 'fabric') {
+    return [title, h('p', { class: 'note shader-note', text: "Shaders on 1.8.9 need OptiFine, which SkyLaunch can't download for you. Modern profiles get shaders through Iris instead." })];
+  }
+  if (!sh.packs.length) {
+    return [title, h('p', { class: 'note shader-note', text: 'No shader packs yet. Browse shaders, or drag a shader .zip here. Iris (the shader mod) is added for you.' })];
+  }
+  return [title, h('ul', { class: 'list' }, ...sh.packs.map((p) => {
+    const inUse = sh.enabled && sh.active === p.file;
+    return h('li', { class: `row${inUse ? '' : ' off-soft'}` },
+      p.icon ? h('img', { class: 'icon', src: p.icon, alt: '' }) : h('span', { class: 'icon' }),
+      h('div', { class: 'main-col' },
+        h('div', { class: 't', text: p.title }),
+        h('div', { class: 's', text: p.version || p.file, title: p.file })),
+      inUse
+        ? h('span', { class: 'in-use', text: 'In use' })
+        : h('button', { class: 'btn', text: 'Use', onclick: async () => { await attempt(() => sky.shaders.use(inst.id, p.file)); toast(`Using ${p.title}`); renderPanel(); } }),
+      h('button', {
+        class: 'x', 'aria-label': `Remove ${p.title}`, title: 'Remove',
+        onclick: async () => { await attempt(() => sky.shaders.remove(inst.id, p.file)); renderPanel(); },
+      }, '×'));
+  }))];
 }
 
 // The SkyLaunch in-game client: Right Shift menu, HUD editor and SkyBlock HUD.
@@ -320,16 +363,25 @@ panelEl.addEventListener('drop', async (e) => {
   panelEl.classList.remove('drop');
   const inst = current();
   if (!inst) return;
-  const files = [...e.dataTransfer.files].map((f) => sky.pathForFile(f)).filter((p) => /\.jar$/i.test(p));
-  if (!files.length) return toast('Only .jar files can be added.', true);
-  const added = await attempt(() => sky.mods.addFiles(inst.id, files));
-  if (added) { toast(`Added ${added.length} file${added.length === 1 ? '' : 's'}`); selectTab('mods'); }
+  const all = [...e.dataTransfer.files].map((f) => sky.pathForFile(f));
+  const jars = all.filter((p) => /\.jar$/i.test(p));
+  const zips = all.filter((p) => /\.zip$/i.test(p));
+  if (!jars.length && !zips.length) return toast('Drop .jar mods or .zip shader packs.', true);
+  if (zips.length && inst.loader !== 'fabric') return toast('Shader packs need a modern (Fabric) profile.', true);
+  let count = 0;
+  if (jars.length) { const a = await attempt(() => sky.mods.addFiles(inst.id, jars)); if (a) count += a.length; }
+  if (zips.length) { const a = await attempt(() => sky.shaders.addFiles(inst.id, zips)); if (a) count += a.length; }
+  if (count) { toast(`Added ${count} file${count === 1 ? '' : 's'}`); selectTab('mods'); }
 });
 
 // ---------- Browse tab
 const CATEGORIES = [
   ['', 'All'], ['utility', 'Utility'], ['optimization', 'Performance'], ['decoration', 'Visual'],
   ['social', 'Social'], ['game-mechanics', 'Gameplay'], ['library', 'Libraries'],
+];
+const SHADER_CATEGORIES = [
+  ['', 'All'], ['vanilla-like', 'Vanilla-like'], ['semi-realistic', 'Realistic'], ['fantasy', 'Fantasy'],
+  ['cartoon', 'Cartoon'], ['potato', 'Low-end PCs'],
 ];
 const SORTS = [['relevance', 'Relevance'], ['downloads', 'Most downloaded'], ['updated', 'Recently updated'], ['newest', 'Newest']];
 let searchTimer;
@@ -341,11 +393,11 @@ async function runSearch({ append = false } = {}) {
   const seq = ++searchSeq;
   b.loading = true;
   b.error = null;
-  if (!append) { b.hits = []; b.forId = inst.id; }
+  if (!append) { b.hits = []; b.forId = inst.id; b.forType = b.type; }
   drawBrowseResults();
   try {
-    const q = `${b.skyblock ? 'skyblock ' : ''}${b.query}`.trim();
-    const res = await sky.mods.search(inst.id, q, { sort: b.sort, category: b.category, offset: append ? b.hits.length : 0 });
+    const q = `${b.skyblock && b.type === 'mod' ? 'skyblock ' : ''}${b.query}`.trim();
+    const res = await sky.mods.search(inst.id, q, { type: b.type, sort: b.sort, category: b.category, offset: append ? b.hits.length : 0 });
     if (seq !== searchSeq) return;
     b.hits = append ? [...b.hits, ...res.hits] : res.hits;
     b.total = res.total;
@@ -359,24 +411,44 @@ async function runSearch({ append = false } = {}) {
 async function renderBrowse(panel, inst) {
   const b = state.browse;
   await refreshMods();
+  await refreshShaders();
+  const setType = (type) => {
+    if (b.type === type) return;
+    b.type = type;
+    b.category = '';
+    b.hits = [];
+    b.forId = null;
+    renderPanel();
+  };
+  const seg = h('div', { class: 'seg', role: 'tablist', 'aria-label': 'What to browse' },
+    h('button', { role: 'tab', 'aria-selected': String(b.type === 'mod'), onclick: () => setType('mod'), text: 'Mods' }),
+    h('button', { role: 'tab', 'aria-selected': String(b.type === 'shader'), onclick: () => setType('shader'), text: 'Shaders' }));
+  if (b.type === 'shader' && inst.loader !== 'fabric') {
+    panel.replaceChildren(seg, h('div', { class: 'empty' },
+      h('strong', { text: 'Shaders need a modern profile' }),
+      "On 1.8.9, shaders need OptiFine, which SkyLaunch can't download for you. Make a modern (Fabric) profile and SkyLaunch handles shaders through Iris."));
+    return;
+  }
   const search = h('input', {
-    class: 'input', type: 'search', value: b.query, placeholder: 'Search Modrinth',
+    class: 'input', type: 'search', value: b.query, placeholder: b.type === 'shader' ? 'Search shader packs' : 'Search Modrinth',
     'aria-label': 'Search Modrinth',
     oninput: (e) => { b.query = e.target.value; clearTimeout(searchTimer); searchTimer = setTimeout(() => runSearch(), 300); },
   });
   const sort = h('select', { class: 'input', 'aria-label': 'Sort by', onchange: (e) => { b.sort = e.target.value; runSearch(); } },
     ...SORTS.map(([v, l]) => h('option', { value: v, selected: v === b.sort, text: l })));
   const chip = (label, pressed, onclick) => h('button', { class: 'chip', 'aria-pressed': String(pressed), onclick, text: label });
+  const cats = b.type === 'shader' ? SHADER_CATEGORIES : CATEGORIES;
   const chips = h('div', { class: 'chips' },
-    chip('SkyBlock', b.skyblock, () => { b.skyblock = !b.skyblock; renderPanel(); runSearch(); }),
-    ...CATEGORIES.map(([v, l]) => chip(l, b.category === v, () => { b.category = v; renderPanel(); runSearch(); })));
+    b.type === 'mod' && chip('SkyBlock', b.skyblock, () => { b.skyblock = !b.skyblock; renderPanel(); runSearch(); }),
+    ...cats.map(([v, l]) => chip(l, b.category === v, () => { b.category = v; renderPanel(); runSearch(); })));
 
   panel.replaceChildren(
+    seg,
     h('div', { class: 'search-bar' }, search, sort),
     chips,
     h('div', { id: 'browseResults' }));
   drawBrowseResults();
-  if (b.forId !== inst.id || (!b.hits.length && !b.loading && !b.error)) runSearch();
+  if (b.forId !== inst.id || b.forType !== b.type || (!b.hits.length && !b.loading && !b.error)) runSearch();
   if (!b.query) search.focus();
 }
 
@@ -385,14 +457,18 @@ function drawBrowseResults() {
   const inst = current();
   if (!box || !inst) return;
   const b = state.browse;
-  const installed = new Map(state.mods.filter((m) => m.projectId).map((m) => [m.projectId, m]));
+  const shaders = b.type === 'shader';
+  const owned = shaders ? state.shaders.packs : state.mods;
+  const installed = new Map(owned.filter((m) => m.projectId).map((m) => [m.projectId, m]));
 
   const parts = [];
   if (b.error) parts.push(h('div', { class: 'empty' }, h('strong', { text: "Couldn't reach Modrinth" }), b.error));
   else if (!b.hits.length && b.loading) parts.push(h('div', { class: 'empty', text: 'Searching…' }));
-  else if (!b.hits.length) parts.push(h('div', { class: 'empty' }, h('strong', { text: 'No matches' }), `Nothing fits Minecraft ${inst.mcVersion} on ${loaderName(inst.loader)}.`));
+  else if (!b.hits.length) parts.push(h('div', { class: 'empty' }, h('strong', { text: 'No matches' }), shaders ? `No shader packs for Minecraft ${inst.mcVersion} match that.` : `Nothing fits Minecraft ${inst.mcVersion} on ${loaderName(inst.loader)}.`));
   else {
-    parts.push(h('div', { class: 'result-count', text: `${b.total.toLocaleString()} mods for ${inst.mcVersion} ${loaderName(inst.loader)}` }));
+    parts.push(h('div', { class: 'result-count', text: shaders
+      ? `${b.total.toLocaleString()} shader packs for ${inst.mcVersion}${state.shaders.iris ? '' : ' · Iris is added when you install one'}`
+      : `${b.total.toLocaleString()} mods for ${inst.mcVersion} ${loaderName(inst.loader)}` }));
     parts.push(h('ul', { class: 'list' }, ...b.hits.map((m) => resultCard(inst, m, installed.get(m.projectId)))));
     if (b.hits.length < b.total) {
       parts.push(h('div', { class: 'load-more' },
@@ -404,6 +480,8 @@ function drawBrowseResults() {
 
 function resultCard(inst, m, have) {
   const actions = h('div', { class: 'actions' });
+  const shader = state.browse.type === 'shader';
+  const findRec = () => (shader ? state.shaders.packs : state.mods).find((x) => x.projectId === m.projectId);
 
   function showInstalled(rec) {
     actions.replaceChildren(
@@ -415,16 +493,23 @@ function resultCard(inst, m, have) {
   }
   async function install(versionId) {
     actions.replaceChildren(h('button', { class: 'btn', disabled: true, text: 'Installing…' }));
+    if (shader) {
+      const had = state.shaders.enabled;
+      const r = await attempt(() => sky.shaders.add(inst.id, m.slug, versionId || null, { title: m.title, icon: m.icon }));
+      if (!r) return reset();
+      await refreshShaders();
+      toast(!had && state.shaders.enabled ? `Added ${m.title}. It's switched on for this profile.` : `Added ${m.title}. Pick it under Shader packs on the Mods tab.`);
+      return showInstalled(findRec());
+    }
     const added = await attempt(() => sky.mods.addModrinth(inst.id, m.slug, versionId || null));
     if (!added) return reset();
     await refreshMods();
-    const rec = state.mods.find((x) => x.projectId === m.projectId);
     toast(added.length > 1 ? `Installed ${m.title} and ${added.length - 1} required mod${added.length > 2 ? 's' : ''}` : `Installed ${m.title}`);
-    showInstalled(rec);
+    showInstalled(findRec());
   }
   async function showVersions() {
     actions.replaceChildren(h('span', { class: 'installed', text: 'Loading versions…' }));
-    const builds = await attempt(() => sky.mods.builds(inst.id, m.projectId));
+    const builds = await attempt(() => sky.mods.builds(inst.id, m.projectId, shader ? 'shader' : 'mod'));
     if (!builds || !builds.length) return reset();
     const select = h('select', { class: 'input', 'aria-label': `${m.title} version` },
       ...builds.map((v) => h('option', { value: v.id, text: `${v.number}${v.type === 'release' ? '' : ` (${v.type})`}` })));
@@ -435,7 +520,7 @@ function resultCard(inst, m, have) {
     select.focus();
   }
   function reset() {
-    const rec = state.mods.find((x) => x.projectId === m.projectId);
+    const rec = findRec();
     if (rec) return showInstalled(rec);
     actions.replaceChildren(h('button', { class: 'btn accent', text: 'Install', onclick: () => install() }), versionsLink());
   }
@@ -444,7 +529,7 @@ function resultCard(inst, m, have) {
   return h('li', { class: 'card' },
     m.icon ? h('img', { class: 'icon', src: m.icon, alt: '' }) : h('span', { class: 'icon' }),
     h('div', {},
-      h('div', {}, h('button', { class: 'link t', style: 'color:var(--text)', onclick: () => sky.app.openExternal(`https://modrinth.com/mod/${m.slug}`), text: m.title }),
+      h('div', {}, h('button', { class: 'link t', style: 'color:var(--text)', onclick: () => sky.app.openExternal(`https://modrinth.com/${shader ? 'shader' : 'mod'}/${m.slug}`), text: m.title }),
         h('span', { class: 'by', text: `by ${m.author}` })),
       h('p', { text: m.description }),
       h('div', { class: 'stats' },
