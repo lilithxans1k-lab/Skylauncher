@@ -38,7 +38,8 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "SkyLaunch-Setup-${version}.${ext}"
     },
     "extraResources": [
       {

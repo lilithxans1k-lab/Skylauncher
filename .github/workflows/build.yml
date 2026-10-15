@@ -107,6 +107,11 @@ jobs:
           if gh release view "v$V" >/dev/null 2>&1; then
             # Release already exists (e.g. a retried run): replace its files.
             gh release upload "v$V" "${FILES[@]}" --clobber
+            # Remove leftovers from earlier attempts so only the files latest.yml points to remain.
+            KEEP=$(for f in "${FILES[@]}"; do basename "$f"; done)
+            gh release view "v$V" --json assets --jq '.assets[].name' | while read -r a; do
+              grep -qxF "$a" <<< "$KEEP" || gh release delete-asset "v$V" "$a" -y
+            done
             gh release edit "v$V" --draft=false --latest
           else
             gh release create "v$V" "${FILES[@]}" --target "$GITHUB_SHA" --title "SkyLaunch $V" --generate-notes --latest
