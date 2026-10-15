@@ -2,6 +2,7 @@ package dev.skylaunch.client.ui;
 
 import dev.skylaunch.client.Client;
 import dev.skylaunch.client.Gfx;
+import dev.skylaunch.client.features.Visual;
 import dev.skylaunch.client.module.Appearance;
 import dev.skylaunch.client.module.Module;
 import dev.skylaunch.client.module.Setting;
@@ -426,6 +427,8 @@ public final class MenuScreen extends UiScreen {
         }
         y += 18;
 
+        if (m == c.crosshair) y = drawCrosshairPreview(g, x, y, w, viewTop, viewBottom);
+
         // Mod-specific options first, the shared "Look" options last.
         List<Setting> ordered = new ArrayList<Setting>();
         for (Setting s : m.settings) if (!"Look".equals(s.section)) ordered.add(s);
@@ -463,6 +466,86 @@ public final class MenuScreen extends UiScreen {
         g.unclip();
         contentHeight = y - startY + 10;
         drawScrollbar(g, viewTop, viewBottom);
+    }
+
+    /** Backgrounds for the crosshair preview, so you can check it against sky, caves and snow. */
+    private static final String[] PREVIEW_BG = {"Sky", "Dark", "Light"};
+    private int previewBg = 0;
+
+    /**
+     * Live crosshair preview: actual size on the left, zoomed on the right, over a background
+     * you can switch. It redraws every frame, so it follows the sliders as you drag them.
+     */
+    private int drawCrosshairPreview(Gfx g, int x, int y, int w, int top, int bottom) {
+        final int h = 84;
+        int x2 = x + w, y2 = y + h;
+        Visual.Crosshair ch = c.crosshair;
+        Draw.round(g, x - 1, y - 1, x2 + 1, y2 + 1, 6, t.line);
+        int half = x + w / 2;
+        // Left: a little scene at real size.
+        paintPreviewBg(g, x, y, half, y2, true);
+        // Right: the same background, flat, for the zoomed view.
+        paintPreviewBg(g, half, y, x2, y2, false);
+        g.rect(half, y, half + 1, y2, Draw.withAlpha(0xFF000000, 60));
+        int lcx = (x + half) / 2, rcx = (half + x2) / 2, cy = y + h / 2;
+        ch.draw(g, lcx, cy);
+        // Zoom as far as fits: the furthest pixel is gap + size + outline from the centre.
+        int extent = (int) (ch.gap.value + ch.size.value + ch.thickness.value + 2);
+        if (ch.style.is("Dot")) extent = (int) ch.thickness.value + 2;
+        else if (ch.style.is("Circle")) extent = (int) (ch.size.value + ch.thickness.value + 2);
+        float zoom = (float) Math.max(1, Math.min(5, Math.floor((h / 2.0 - 6) / Math.max(1, extent))));
+        g.push(rcx, cy, zoom);
+        ch.draw(g, 0, 0);
+        g.pop();
+        int lbl = previewBg == 2 ? 0xCC1A1A1A : 0xCCFFFFFF;
+        g.text("Actual size", x + 6, y2 - 12, lbl, false);
+        String zl = "Zoomed " + (int) zoom + "x";
+        g.text(zl, x2 - 6 - g.textWidth(zl), y2 - 12, lbl, false);
+        if (!ch.enabled) Draw.centered(g, "Turn on to use in game", lcx, y + 6, lbl, false);
+
+        // Background switcher, top right.
+        int bx = x2 - 6;
+        for (int k = PREVIEW_BG.length - 1; k >= 0; k--) {
+            final int idx = k;
+            String name = PREVIEW_BG[k];
+            int bw = g.textWidth(name) + 10;
+            int bx1 = bx - bw, by1 = y + 5, by2 = y + 18;
+            boolean sel = previewBg == k, hov = hovered(bx1, by1, bx, by2);
+            Draw.round(g, bx1, by1, bx, by2, 3, sel ? t.accent : hov ? 0xCC000000 : 0x99000000);
+            g.text(name, bx1 + 5, by1 + 3, sel ? t.onAccent : 0xFFFFFFFF, false);
+            if (visibleRow(by1, by2, top, bottom)) hit("xbg:" + k, bx1, Math.max(by1, top), bx, Math.min(by2, bottom), new Click() {
+                public void click(int mx, int my, int b) {
+                    previewBg = idx;
+                }
+            });
+            bx = bx1 - 3;
+        }
+        return y2 + 10;
+    }
+
+    private void paintPreviewBg(Gfx g, int x1, int y1, int x2, int y2, boolean scene) {
+        int h = y2 - y1;
+        if (previewBg == 1) {
+            g.rect(x1, y1, x2, y2, 0xFF1E1E22);
+            if (scene) {
+                g.rect(x1, y1 + h * 2 / 3, x2, y2, 0xFF2C2A28);
+                g.rect(x1 + 10, y1 + h / 3, x1 + 30, y1 + h * 2 / 3, 0xFF34322F);
+            }
+        } else if (previewBg == 2) {
+            g.rect(x1, y1, x2, y2, 0xFFE9EEF3);
+            if (scene) g.rect(x1, y1 + h * 2 / 3, x2, y2, 0xFFF7F9FB);
+        } else {
+            // Sky fading down to a horizon, with grass below in the scene.
+            int steps = 8;
+            for (int k = 0; k < steps; k++) {
+                int sy1 = y1 + h * k / steps, sy2 = y1 + h * (k + 1) / steps;
+                g.rect(x1, sy1, x2, sy2, Draw.mix(0xFF7BA7F7, 0xFFB8D3FA, k / (double) (steps - 1)));
+            }
+            if (scene) {
+                g.rect(x1, y1 + h * 2 / 3, x2, y1 + h * 2 / 3 + 3, 0xFF6A9A3E);
+                g.rect(x1, y1 + h * 2 / 3 + 3, x2, y2, 0xFF5A8A34);
+            }
+        }
     }
 
     private boolean visibleRow(int y1, int y2, int top, int bottom) {

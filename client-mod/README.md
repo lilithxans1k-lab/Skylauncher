@@ -21,7 +21,7 @@ It comes in two builds that share one codebase:
   - *Coin tracker*: coins made this session and per hour from your purse. It can count gains only, ignores profile switches, and has an optional reset key.
   - *Skill tracker*: progress bar, XP per hour, time to the next level, and XP this session, for your latest skill or all recent ones. It hides itself when you go idle.
 - **Combat & QoL**: armor status with durability, potion effects, zoom (hold C, scroll to adjust), toggle sprint & sneak (V, sneak key optional), reach display, combo counter, chat timestamps
-- **Visual**: fullbright, custom crosshair (cross, dot, circle, T), hit colour, block outline, no view bobbing (on by default), no hurt camera, no fire overlay
+- **Visual**: fullbright, custom crosshair (cross, dot, circle, T) with a live preview, hit colour, block outline, no view bobbing (on by default), no hurt camera, no fire overlay
 - **Share world** (in the menu header, singleplayer on 26.2): opens your world to friends through e4mc and copies an invite with your exact mod list. See the main README.
 - **Appearance**: theme (Midnight, Dawn, Violet or Light, matching the launcher by default), an optional custom accent colour, the menu key, background blur behind menus (26.2), and the default look for every HUD element (value and label colours, background, rounded corners, padding, text shadow)
 
