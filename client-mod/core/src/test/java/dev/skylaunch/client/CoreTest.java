@@ -31,6 +31,7 @@ public final class CoreTest {
         actionBar();
         coins();
         timestamps();
+        invites();
         System.out.println(passed + " passed, " + failed + " failed");
         if (failed > 0) System.exit(1);
     }
@@ -154,5 +155,39 @@ public final class CoreTest {
         ts.twentyFour.value = true;
         ts.seconds.value = true;
         eq("[20:41:07] ", ts.stamp(cal.getTime()), "24h stamp");
+    }
+
+    @SuppressWarnings("unchecked")
+    static void invites() {
+        eq("brave-otter.au.e4mc.link", dev.skylaunch.client.share.Invite.findAddress("Local game hosted on domain [Brave-Otter.au.e4mc.link]"), "find e4mc address");
+        eq(null, dev.skylaunch.client.share.Invite.findAddress("Hello world"), "no address");
+        java.util.Map<String, Object> manifest = new java.util.LinkedHashMap<String, Object>();
+        manifest.put("mc", "26.2");
+        manifest.put("loader", "fabric");
+        java.util.List<Object> mods = new java.util.ArrayList<Object>();
+        java.util.Map<String, Object> mod = new java.util.LinkedHashMap<String, Object>();
+        mod.put("v", "AbC123xy");
+        mod.put("t", "Sodium");
+        mods.add(mod);
+        manifest.put("mods", mods);
+        manifest.put("files", java.util.Arrays.asList((Object) "MyWaypoints-1.2.jar"));
+        String code = dev.skylaunch.client.share.Invite.encode("brave-otter.au.e4mc.link", "lilith_sb", manifest, "26.2", "fabric");
+        eq(true, code.startsWith("skylaunch:"), "invite prefix");
+        eq(true, code.length() < 300, "invite is short (" + code.length() + ")");
+        try {
+            java.util.Map<String, Object> back = dev.skylaunch.client.share.Invite.decode(code);
+            eq("brave-otter.au.e4mc.link", back.get("a"), "invite address");
+            eq("lilith_sb", back.get("h"), "invite host");
+            eq("Sodium", ((java.util.Map<String, Object>) ((java.util.List<Object>) back.get("m")).get(0)).get("t"), "invite mods");
+        } catch (Exception e) {
+            eq("decoded", e.toString(), "invite decode");
+        }
+        if (System.getProperty("invite.out") != null) {
+            try {
+                java.nio.file.Files.write(java.nio.file.Paths.get(System.getProperty("invite.out")), code.getBytes("UTF-8"));
+            } catch (Exception ignored) {
+                // optional cross-check with the launcher's decoder
+            }
+        }
     }
 }

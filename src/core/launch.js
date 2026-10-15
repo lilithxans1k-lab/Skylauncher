@@ -8,6 +8,7 @@ const auth = require('./auth');
 const modrinth = require('./modrinth');
 const { HYPIXEL_HOST } = require('./presets');
 const clientMod = require('./clientmod');
+const share = require('./share');
 const { execFile } = require('child_process');
 const Handler = require('minecraft-launcher-core/components/handler');
 
@@ -43,7 +44,9 @@ async function launch(id, hooks) {
 
   // Install preset mods the first time a profile is played.
   if (!inst.presetInstalledAt) await instances.installPreset(id, progress);
+  await ensureSharingMod(id, progress, log);
   clientMod.sync(instances.get(id));
+  try { share.writeManifest(id); } catch (e) { log(`[SkyLaunch] Couldn't write the mod list for invites: ${e.message}`); }
 
   progress('Signing in', 0);
   const authorization = await auth.launchAuth();
@@ -79,7 +82,10 @@ async function launch(id, hooks) {
     overrides: { gameDirectory: paths.instanceDir(id), detached: false },
     window: settings.width && settings.height ? { width: String(settings.width), height: String(settings.height) } : undefined,
   };
-  if (inst.autoJoin) {
+  if (hooks.joinAddress) {
+    opts.quickPlay = { type: 'multiplayer', identifier: hooks.joinAddress };
+    log(`[SkyLaunch] Joining ${hooks.joinAddress}`);
+  } else if (inst.autoJoin) {
     opts.quickPlay = modern
       ? { type: 'multiplayer', identifier: HYPIXEL_HOST }
       : { type: 'legacy', identifier: `${HYPIXEL_HOST}:25565` };
@@ -106,6 +112,22 @@ async function launch(id, hooks) {
     state('stopped', code);
   });
   return true;
+}
+
+/**
+ * Modern profiles with the SkyLaunch Client get e4mc, which powers Share world.
+ * If Modrinth is unreachable the game still starts; sharing just says the mod is missing.
+ */
+async function ensureSharingMod(id, progress, log) {
+  const inst = instances.get(id);
+  if (inst.loader !== 'fabric' || inst.clientMod === false) return;
+  if (inst.mods.some((m) => /e4mc/i.test(`${m.title} ${m.file}`))) return;
+  try {
+    progress('Adding world sharing (e4mc)', 0);
+    await instances.addModrinthMod(id, 'e4mc', progress);
+  } catch (e) {
+    log(`[SkyLaunch] Couldn't add e4mc for world sharing: ${e.message}`);
+  }
 }
 
 function stop() {

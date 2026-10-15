@@ -37,6 +37,15 @@ A Minecraft launcher for Hypixel SkyBlock. Sign in with Microsoft, pick a preset
 
 To include the in-game client, build it first with `npm run build:client` (needs JDK 25 and JDK 17, see client-mod/README.md). Or push to GitHub and let `.github/workflows/build.yml` build the mods and the installer for you.
 
+## Sharing a world with friends
+
+Open a singleplayer world on a modern (26.2) profile, press **Right Shift → Share world**, choose the game mode and click **Start LAN World**. A few seconds later you get an address (like `brave-otter.au.e4mc.link`) and an **invite**.
+
+- **Friends on SkyLaunch:** they click **Join a friend** in the launcher and paste the invite. SkyLaunch shows which of your mods they need, installs those exact versions into a profile named after you, and joins your world. Mods that aren't on Modrinth are listed so they can ask you for the files.
+- **Friends on any other launcher:** they add the address as a server. They need the same Minecraft version and mods as you.
+
+Sharing uses [e4mc](https://modrinth.com/mod/e4mc), a free relay that's added to modern profiles automatically. The world is online while you're playing it. It isn't available on 1.8.9.
+
 ## Updates
 
 SkyLaunch updates itself from this repo's GitHub Releases. When it starts it checks for a newer release and downloads it in the background. Players get a **Restart to update** button in the sidebar, or the update installs by itself the next time they close SkyLaunch. It never restarts while Minecraft is running. **Check for updates** under the account button checks again by hand.

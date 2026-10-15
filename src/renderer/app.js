@@ -603,6 +603,94 @@ function openNewProfile() {
 }
 $('newProfile').addEventListener('click', openNewProfile);
 
+// ---------- Join a friend (shared worlds)
+function openJoinFriend() {
+  const d = $('dialog');
+  let plan = null;
+  let timer;
+  const details = h('div', { class: 'join-details' });
+  const join = h('button', { class: 'btn accent', text: 'Install and join', disabled: true });
+  const code = h('textarea', {
+    class: 'input invite-box', rows: 3, spellcheck: false, autofocus: true,
+    placeholder: 'Paste the invite your friend copied from Share world (starts with skylaunch:)',
+    oninput: () => { clearTimeout(timer); timer = setTimeout(check, 250); },
+  });
+
+  async function check() {
+    const text = code.value.trim();
+    plan = null;
+    join.disabled = true;
+    if (!text) { details.replaceChildren(); return; }
+    try {
+      plan = await sky.share.plan(text);
+    } catch (e) {
+      details.replaceChildren(h('p', { class: 'join-error', text: e.message }));
+      return;
+    }
+    const need = plan.mods.filter((m) => !m.installed);
+    join.disabled = false;
+    join.textContent = need.length ? `Install ${need.length} mod${need.length === 1 ? '' : 's'} and join` : 'Join';
+    const parts = [
+      h('p', { class: 'join-summary' },
+        h('strong', { text: `${plan.host}'s world` }),
+        ` · Minecraft ${plan.mcVersion} ${plan.loader === 'fabric' ? 'Fabric' : plan.loader}`),
+      h('p', { class: 'note join-note', text: plan.profileExists
+        ? `Uses your "${plan.profileName}" profile. Mods ${plan.host} doesn't have are removed from it so yours match.`
+        : `Creates a profile called "${plan.profileName}" with exactly ${plan.host}'s mods, so your normal profiles stay untouched.` }),
+    ];
+    if (plan.mods.length) {
+      parts.push(h('div', { class: 'section-title', text: `Mods (${plan.mods.length})` }),
+        h('ul', { class: 'join-mods' }, ...plan.mods.map((m) => h('li', {},
+          h('span', { text: m.title }),
+          h('span', { class: m.installed ? 'ok' : 'todo', text: m.installed ? 'Installed' : 'Will install' })))));
+    } else {
+      parts.push(h('p', { class: 'note', text: 'No Modrinth mods needed.' }));
+    }
+    if (plan.files.length) {
+      parts.push(h('div', { class: 'section-title', text: `Ask ${plan.host} for these files (${plan.files.length})` }),
+        h('p', { class: 'note', text: "They aren't on Modrinth, so they can't be installed for you. Drop them onto the profile's Mods tab before joining if the world needs them." }),
+        h('ul', { class: 'join-mods' }, ...plan.files.map((f) => h('li', {}, h('span', { text: f }), h('span', { class: 'todo', text: 'Manual' })))));
+    }
+    details.replaceChildren(...parts);
+  }
+
+  join.addEventListener('click', async () => {
+    if (!plan) return;
+    if (!state.account.active) { toast('Sign in with Microsoft first.', true); return; }
+    join.disabled = true;
+    join.textContent = 'Installing…';
+    d.close();
+    const r = await attempt(() => sky.share.join(code.value.trim()), { busyLabel: `Getting ${plan.host}'s mods` });
+    if (r && r.failed.length) toast(`Couldn't install: ${r.failed.join(', ')}. You may not be able to join.`, true);
+  });
+
+  d.replaceChildren(
+    h('div', { class: 'dlg-body' },
+      h('h2', { text: 'Join a friend' }),
+      h('p', { text: "Paste the invite from your friend's Share world panel. SkyLaunch installs the same mods they have, then joins their world." }),
+      code,
+      details),
+    h('div', { class: 'dlg-foot' }, h('button', { class: 'btn', text: 'Cancel', onclick: () => d.close() }), join));
+  d.showModal();
+  // Pre-fill from the clipboard when it already holds an invite.
+  navigator.clipboard.readText().then((t) => {
+    if (t && t.trim().startsWith('skylaunch:') && !code.value) { code.value = t.trim(); check(); }
+  }).catch(() => {});
+}
+$('joinFriend').addEventListener('click', openJoinFriend);
+
+sky.onProfilesChanged(async ({ select }) => {
+  state.tab = 'mods';
+  await refreshInstances(select);
+});
+sky.onLaunchError((msg) => {
+  state.game = { id: null, state: 'stopped' };
+  state.busy = null;
+  renderHeader();
+  renderProfiles();
+  toast(msg, true);
+});
+
 // ---------- events from the main process
 sky.onProgress(({ label, fraction }) => {
   state.busy = state.game.state === 'running' ? null : { label, fraction };

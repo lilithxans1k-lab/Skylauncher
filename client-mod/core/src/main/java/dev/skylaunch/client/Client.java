@@ -65,6 +65,11 @@ public final class Client {
     public final Extras.ChatTimestamps chatTimestamps;
     public final Extras.Coins coinHud;
 
+    /** e4mc address of the shared world, once e4mc has announced it. */
+    public String shareAddress;
+    /** When the player last pressed Share world (to reopen the panel when the address arrives). */
+    public long shareRequestedAt;
+
     /** The SkyLaunch screen currently open, if any. */
     public UiScreen screenOpen;
 
@@ -132,12 +137,14 @@ public final class Client {
         if (game.inWorld()) {
             if (playStartedAt == 0) playStartedAt = System.currentTimeMillis();
             motion.tick(game.x(), game.y(), game.z());
+            if (shareAddress != null && !game.worldShared()) shareAddress = null;
             if (tickCount % 10 == 0) {
                 sb.readScoreboard(game.scoreboardTitle(), game.scoreboardLines());
                 if (sb.onSkyBlock) sb.readTab(game.tabLines());
                 coins.update(sb.onSkyBlock ? sb.purse : Double.NaN, sb.profile, System.currentTimeMillis());
             }
         } else {
+            shareAddress = null;
             motion.reset();
             if (sb.onSkyBlock) sb.reset();
         }
@@ -154,6 +161,48 @@ public final class Client {
             if (!h.active(this)) continue;
             h.render(g, this);
         }
+    }
+
+    /** Any non-action-bar chat or system message, as plain text. */
+    public void onChat(String plain) {
+        String addr = dev.skylaunch.client.share.Invite.findAddress(plain);
+        if (addr == null || !game.inSingleplayer()) return;
+        shareAddress = addr;
+        // Pressed Share world a moment ago: show the invite straight away.
+        if (System.currentTimeMillis() - shareRequestedAt < 120_000 && screenOpen == null) {
+            shareRequestedAt = 0;
+            openShare();
+        }
+    }
+
+    public void openShare() {
+        game.openScreen(new dev.skylaunch.client.ui.ShareScreen(this));
+    }
+
+    /** The invite code for the current shared world, or null. */
+    @SuppressWarnings("unchecked")
+    public String invite() {
+        if (shareAddress == null) return null;
+        Map<String, Object> manifest = null;
+        java.io.File f = new java.io.File(game.gameDir(), "skylaunch-share.json");
+        if (f.exists()) {
+            try {
+                Reader r = new InputStreamReader(new FileInputStream(f), Charset.forName("UTF-8"));
+                StringBuilder b = new StringBuilder();
+                char[] buf = new char[4096];
+                int n;
+                while ((n = r.read(buf)) > 0) b.append(buf, 0, n);
+                r.close();
+                Object o = Json.parse(b.toString());
+                if (o instanceof Map) manifest = (Map<String, Object>) o;
+            } catch (Exception e) {
+                System.err.println("[SkyLaunch] Couldn't read the mod list for invites: " + e);
+            }
+        }
+        String plat = game.platformName();
+        String mc = plat.split(" ")[0];
+        String loader = plat.toLowerCase(java.util.Locale.ROOT).contains("forge") ? "forge" : "fabric";
+        return dev.skylaunch.client.share.Invite.encode(shareAddress, game.playerName(), manifest, mc, loader);
     }
 
     /** Action bar text (the line above the hotbar), raw with formatting codes. */

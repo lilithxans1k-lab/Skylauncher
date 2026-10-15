@@ -77,6 +77,26 @@ public interface Game {
     /** Version label shown in the menu footer, e.g. "26.2 Fabric". */
     String platformName();
 
+    // --- world sharing --------------------------------------------------------
+    /** True while playing your own singleplayer world. */
+    boolean inSingleplayer();
+
+    /** Why sharing isn't possible right now, or null when it is. */
+    String shareUnavailableReason();
+
+    /** Opens Minecraft's "Open to LAN" screen. Returns null on success, or a message. */
+    String startSharing();
+
+    /** True once the world has been opened to LAN. */
+    boolean worldShared();
+
+    void copyToClipboard(String text);
+
+    String playerName();
+
+    /** The profile's game folder (where skylaunch-share.json lives). */
+    java.io.File gameDir();
+
     final class ItemInfo {
         public final Object handle;
         public final int damage;

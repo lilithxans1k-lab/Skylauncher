@@ -48,6 +48,7 @@ public final class SkyLaunchFabric implements ClientModInitializer {
         // Action bar (health, mana, skill XP).
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             if (overlay) client.onActionBar(message.getString());
+            else client.onChat(message.getString());
         });
 
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath("skylaunch", "hud"),

@@ -161,11 +161,15 @@ app.whenReady().then(() => {
     return canceled ? null : filePaths[0];
   });
 
-  handle('game:launch', async (id) => {
+  const share = require('./core/share');
+  handle('share:plan', (code) => share.plan(code));
+
+  const startGame = async (id, joinAddress) => {
     const s = settings.get();
     try {
       await launcher.launch(id, {
         settings: s,
+        joinAddress,
         progress,
         log: (line) => send('log', line),
         state: (st, code) => {
@@ -179,6 +183,14 @@ app.whenReady().then(() => {
       throw e;
     }
     return true;
+  };
+  handle('game:launch', (id) => startGame(id));
+  handle('share:join', async (code) => {
+    if (launcher.runningId()) throw new Error('Close the game that is running first.');
+    const { id, address, failed } = await share.prepare(code, progress);
+    send('profiles-changed', { select: id });
+    startGame(id, address).catch((e) => send('launch-error', e.message));
+    return { id, failed };
   });
   handle('game:stop', () => launcher.stop());
   handle('game:running', () => launcher.runningId());

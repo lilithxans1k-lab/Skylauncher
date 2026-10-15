@@ -210,6 +210,60 @@ final class FabricGame implements Game {
         return "26.2 Fabric";
     }
 
+    // --- world sharing (through the e4mc mod) -----------------------------------
+
+    @Override
+    public boolean inSingleplayer() {
+        return mc.hasSingleplayerServer();
+    }
+
+    @Override
+    public String shareUnavailableReason() {
+        if (!mc.hasSingleplayerServer()) return "Open one of your singleplayer worlds, then share it from here.";
+        if (!FabricLoader.getInstance().isModLoaded("e4mc"))
+            return "The sharing mod (e4mc) isn't in this profile yet. Close Minecraft and press Play in SkyLaunch again; it's added automatically.";
+        return null;
+    }
+
+    @Override
+    public String startSharing() {
+        // Minecraft's own Open to LAN screen. e4mc takes over from there and posts the address.
+        try {
+            Class<?> k = Class.forName("net.minecraft.client.gui.screens.ShareToLanScreen");
+            Object screen = k.getConstructor(net.minecraft.client.gui.screens.Screen.class).newInstance((Object) null);
+            mc.gui.setScreen((net.minecraft.client.gui.screens.Screen) screen);
+            return null;
+        } catch (Throwable t) {
+            return "Press Esc and click Open to LAN instead.";
+        }
+    }
+
+    @Override
+    public boolean worldShared() {
+        Object server = mc.getSingleplayerServer();
+        if (server == null) return false;
+        try {
+            return (Boolean) server.getClass().getMethod("isPublished").invoke(server);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    @Override
+    public void copyToClipboard(String text) {
+        mc.keyboardHandler.setClipboard(text);
+    }
+
+    @Override
+    public String playerName() {
+        return mc.getUser().getName();
+    }
+
+    @Override
+    public File gameDir() {
+        return FabricLoader.getInstance().getGameDir().toFile();
+    }
+
     /** GLFW key codes for the key names the shared code uses as defaults. */
     static final class Keys {
         static int glfw(String name) {

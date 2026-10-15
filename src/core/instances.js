@@ -276,6 +276,15 @@ async function changeVersion(id, mcVersion, onProgress) {
   return { skipped };
 }
 
+/** Tag a profile as the one used for joining this host's shared worlds. */
+function markShared(id, host) {
+  const inst = get(id);
+  inst.sharedFrom = host;
+  inst.presetInstalledAt = Date.now(); // its mods come from the invite, not a preset
+  inst.autoJoin = false;
+  save(inst);
+}
+
 /** Built-in SkyLaunch client state for the Mods tab. */
 function clientModStatus(id) {
   return clientMod.status(get(id));
@@ -283,6 +292,7 @@ function clientModStatus(id) {
 
 module.exports = {
   clientModStatus,
+  markShared,
   list, get, create, update, remove, versionChoices, listMods, installPreset,
   addModrinthMod, addLocalFiles, setModEnabled, removeMod, changeVersion,
 };

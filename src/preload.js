@@ -42,6 +42,7 @@ contextBridge.exposeInMainWorld('sky', {
     signOut: call('auth:signOut'),
   },
   update: { get: call('update:get'), check: call('update:check'), install: call('update:install') },
+  share: { plan: call('share:plan'), join: call('share:join') },
   settings: { get: call('settings:get'), set: call('settings:set'), pickJava: call('settings:pickJava') },
   game: { launch: call('game:launch'), stop: call('game:stop'), running: call('game:running') },
   app: { openExternal: call('app:openExternal'), version: call('app:version'), accent: call('app:accent') },
@@ -52,4 +53,6 @@ contextBridge.exposeInMainWorld('sky', {
   onGameState: on('game-state'),
   onAccent: on('accent'),
   onUpdate: on('update-state'),
+  onProfilesChanged: on('profiles-changed'),
+  onLaunchError: on('launch-error'),
 });

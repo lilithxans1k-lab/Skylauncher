@@ -191,4 +191,33 @@ final class ForgeGame implements Game {
     public String platformName() {
         return "1.8.9 Forge";
     }
+
+    // World sharing needs e4mc, which doesn't exist for 1.8.9.
+    public boolean inSingleplayer() {
+        return mc.isSingleplayer();
+    }
+
+    public String shareUnavailableReason() {
+        return "Sharing worlds isn't available on 1.8.9. Use a modern (26.2) profile to share a world with friends.";
+    }
+
+    public String startSharing() {
+        return shareUnavailableReason();
+    }
+
+    public boolean worldShared() {
+        return false;
+    }
+
+    public void copyToClipboard(String text) {
+        net.minecraft.client.gui.GuiScreen.setClipboardString(text);
+    }
+
+    public String playerName() {
+        return mc.getSession().getUsername();
+    }
+
+    public File gameDir() {
+        return mc.mcDataDir;
+    }
 }

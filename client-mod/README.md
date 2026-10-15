@@ -22,6 +22,7 @@ It comes in two builds that share one codebase:
   - *Skill tracker*: progress bar, XP per hour, time to the next level, and XP this session, for your latest skill or all recent ones. It hides itself when you go idle.
 - **Combat & QoL**: armor status with durability, potion effects, zoom (hold C, scroll to adjust), toggle sprint (V), chat timestamps
 - **Visual**: fullbright, custom crosshair (cross, dot, circle, T), hit colour, block outline, no view bobbing (on by default), no hurt camera, no fire overlay
+- **Share world** (in the menu header, singleplayer on 26.2): opens your world to friends through e4mc and copies an invite with your exact mod list. See the main README.
 - **Appearance**: dark/light theme, accent colour, the menu key, and the default look for every HUD element (value and label colours, background, rounded corners, padding, text shadow)
 
 Every HUD element also has its own size, background, shadow and colour overrides. **Edit HUD** lets you drag elements, scroll to resize, and right-click for settings. Elements snap to screen edges, the centre lines and each other.
@@ -55,7 +56,7 @@ Once the jars are in `resources/client/`, the launcher copies the right one into
 
 None of this has been compiled against Minecraft yet. My workspace couldn't reach Mojang's or Fabric's servers, so only `core/` has been built and tested so far.
 
-- `core/` compiles as Java 8 and passes 54 tests (number formats, JSON, scoreboard, tab list and action bar parsing).
+- `core/` compiles as Java 8 and passes 61 tests (number formats, JSON, scoreboard, tab list and action bar parsing).
 - The 26.2 calls were checked against Fabric API 26.2 and the current Skyblocker, Odin, Zoomify and Gamma Utils sources. Expect at most a handful of small compile errors, most likely in `FabricGame.java` or `ScreenWrapper.java`. Paste the first error and it's usually a one-line fix.
 - **Hit colour on 26.2** looks up the game's overlay texture while running. If the game has moved it, that feature switches itself off and logs one line, and nothing else is affected.
 - **Block outline on 26.2** draws a coloured fill over the block and can keep or hide the vanilla lines, but it can't recolour the lines themselves. On 1.8.9 it can do both.

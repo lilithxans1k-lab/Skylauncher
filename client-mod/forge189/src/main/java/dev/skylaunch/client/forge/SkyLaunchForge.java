@@ -126,6 +126,7 @@ public final class SkyLaunchForge {
             client.onActionBar(event.message.getUnformattedText());
             return;
         }
+        if (event.message != null) client.onChat(event.message.getUnformattedText());
         if (client.chatTimestamps.enabled && event.message != null) {
             IChatComponent stamped = new ChatComponentText("\u00a7" + client.chatTimestamps.code() + client.chatTimestamps.stamp(new Date()) + "\u00a7r");
             stamped.appendSibling(event.message);

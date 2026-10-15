@@ -217,9 +217,25 @@ public final class MenuScreen extends UiScreen {
                 c.openHudEditor();
             }
         });
+        // Share world (singleplayer only)
+        int leftEdge = bx;
+        if (c.game.inSingleplayer()) {
+            String sl = c.shareAddress != null ? "Shared" : "Share world";
+            int sbw = g.textWidth(sl) + 16, sbx = bx - 8 - sbw;
+            boolean shov = hovered(sbx, by, sbx + sbw, by + bh);
+            Draw.round(g, sbx, by, sbx + sbw, by + bh, 3, shov ? t.selected : t.surface);
+            Draw.outline(g, sbx, by, sbx + sbw, by + bh, t.line);
+            g.text(sl, sbx + 8, by + 4, c.shareAddress != null ? t.accent : t.text, false);
+            hit("share", sbx, by, sbx + sbw, by + bh, new Click() {
+                public void click(int mx, int my, int b) {
+                    c.openShare();
+                }
+            });
+            leftEdge = sbx;
+        }
         // Search field
         if (open == null) {
-            int sw = Math.min(120, cw() / 3), sx = bx - 8 - sw;
+            int sw = Math.min(120, cw() / 3), sx = leftEdge - 8 - sw;
             textField(g, search, "Search mods", sx, by, sw, bh);
         }
     }
