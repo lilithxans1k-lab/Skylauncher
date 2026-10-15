@@ -402,6 +402,13 @@ function addLocalShaders(id, files) {
   return added;
 }
 
+/** Add a finished session to the profile's total play time. */
+function addPlayTime(id, ms) {
+  const inst = get(id);
+  inst.playMs = (inst.playMs || 0) + Math.max(0, ms);
+  save(inst);
+}
+
 /** Tag a profile as the one used for joining this host's shared worlds. */
 function markShared(id, host) {
   const inst = get(id);
@@ -417,6 +424,7 @@ function clientModStatus(id) {
 }
 
 module.exports = {
+  addPlayTime,
   listShaders, addShader, setActiveShader, removeShader, addLocalShaders,
   clientModStatus,
   markShared,

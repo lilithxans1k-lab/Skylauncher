@@ -102,11 +102,12 @@ async function launch(id, hooks) {
     state('stopped');
     throw new Error('Minecraft failed to start. Open the Logs tab for details.');
   }
-  running = { id, child };
+  running = { id, child, startedAt: Date.now() };
   instances.update(id, { lastPlayed: Date.now() });
   state('running');
 
   client.on('close', (code) => {
+    try { instances.addPlayTime(id, Date.now() - running.startedAt); } catch { /* profile deleted */ }
     running = null;
     log(`[SkyLaunch] Minecraft exited with code ${code}`);
     state('stopped', code);

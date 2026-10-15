@@ -53,7 +53,7 @@ contextBridge.exposeInMainWorld('sky', {
   share: { plan: call('share:plan'), join: call('share:join') },
   settings: { get: call('settings:get'), set: call('settings:set'), pickJava: call('settings:pickJava') },
   game: { launch: call('game:launch'), stop: call('game:stop'), running: call('game:running') },
-  app: { openExternal: call('app:openExternal'), version: call('app:version'), accent: call('app:accent') },
+  app: { openExternal: call('app:openExternal'), version: call('app:version'), accent: call('app:accent'), look: call('app:look') },
   // Dropped files carry no path in the sandbox; this recovers it.
   pathForFile: (file) => webUtils.getPathForFile(file),
   onProgress: on('progress'),

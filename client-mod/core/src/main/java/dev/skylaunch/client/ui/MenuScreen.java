@@ -14,7 +14,7 @@ import java.util.List;
  * of mods with switches on the right, and a settings page for each mod.
  */
 public final class MenuScreen extends UiScreen {
-    private static final int SIDEBAR = 112, ROW = 30, SET_ROW = 22, HEADER = 38;
+    private static final int SIDEBAR = 120, TILE_H = 52, TILE_GAP = 6, SET_ROW = 22, HEADER = 40;
 
     private Module.Category category = null; // null = all mods
     private Module open = null;
@@ -23,6 +23,28 @@ public final class MenuScreen extends UiScreen {
     private Setting.Color picking = null;
     private Setting.KeyBind listening = null;
     private Theme t;
+
+    // Small eased animations for hovers and switches, keyed by control id.
+    private final java.util.Map<String, double[]> anim = new java.util.HashMap<String, double[]>();
+    private long lastFrame = System.currentTimeMillis();
+    private double frameDt = 16;
+
+    /** Moves the value for `key` toward `target` (0..1) and returns it. */
+    private double ease(String key, boolean on, double perSecond) {
+        double[] v = anim.get(key);
+        if (v == null) {
+            v = new double[]{on ? 1 : 0};
+            anim.put(key, v);
+        }
+        double step = perSecond * frameDt / 1000.0;
+        double target = on ? 1 : 0;
+        v[0] = v[0] < target ? Math.min(target, v[0] + step) : Math.max(target, v[0] - step);
+        return v[0];
+    }
+
+    private static double smooth(double x) {
+        return x * x * (3 - 2 * x);
+    }
 
     private final TextField search = new TextField(24) {
         @Override
@@ -58,8 +80,11 @@ public final class MenuScreen extends UiScreen {
     @Override
     protected void draw(Gfx g) {
         t = c.appearance.menuTheme();
-        pw = Math.min(540, width - 24);
-        ph = Math.min(330, height - 24);
+        long now = System.currentTimeMillis();
+        frameDt = Math.max(1, Math.min(100, now - lastFrame));
+        lastFrame = now;
+        pw = Math.min(600, width - 24);
+        ph = Math.min(350, height - 24);
         px = (width - pw) / 2;
         py = (height - ph) / 2;
 
@@ -72,9 +97,14 @@ public final class MenuScreen extends UiScreen {
         boolean anim = age < 1;
         if (anim) g.push(ox - px * s, oy - py * s, s);
 
-        Draw.round(g, px, py, px + pw, py + ph, 4, t.bg);
-        Draw.round(g, px, py, px + SIDEBAR, py + ph, 4, t.sidebar);
-        g.rect(px + SIDEBAR - 4, py, px + SIDEBAR, py + ph, t.sidebar);
+        // Soft shadow: a few widening, fading rounded layers under the panel.
+        for (int i = 4; i >= 1; i--) {
+            int spread = i * 2;
+            Draw.round(g, px - spread, py - spread + 3, px + pw + spread, py + ph + spread + 3, 6 + spread, Draw.withAlpha(0xFF000000, 18 - i * 3));
+        }
+        Draw.round(g, px, py, px + pw, py + ph, 6, t.bg);
+        Draw.round(g, px, py, px + SIDEBAR, py + ph, 6, t.sidebar);
+        g.rect(px + SIDEBAR - 6, py, px + SIDEBAR, py + ph, t.sidebar);
         g.rect(px + SIDEBAR, py, px + SIDEBAR + 1, py + ph, t.line);
 
         drawSidebar(g);
@@ -86,27 +116,31 @@ public final class MenuScreen extends UiScreen {
 
     private void drawSidebar(Gfx g) {
         int x = px + 8, y = py + 12;
-        g.text(Client.NAME, x + 4, y, t.text, false);
-        y += 22;
+        // Brand mark: a small accent tile next to the name.
+        Draw.round(g, x + 4, y - 1, x + 13, y + 8, 2, t.accent);
+        g.rect(x + 6, y + 1, x + 9, y + 4, Draw.withAlpha(t.onAccent, 0x70));
+        g.text(Client.NAME, x + 18, y, t.text, false);
+        y += 24;
         y = categoryItem(g, null, "All mods", x, y);
         for (Module.Category cat : Module.Category.values()) {
             if (cat == Module.Category.SETTINGS) continue;
             y = categoryItem(g, cat, cat.label, x, y);
         }
-        int by = py + ph - 52;
+        int by = py + ph - 54;
         categoryItem(g, Module.Category.SETTINGS, "Appearance", x, by);
         g.text(c.game.platformName(), x + 4, py + ph - 16, t.faint, false);
     }
 
     private int categoryItem(Gfx g, final Module.Category cat, String label, int x, int y) {
-        int w = SIDEBAR - 16, h = 18;
+        int w = SIDEBAR - 16, h = 20;
         boolean sel = open == null ? (category == cat && search.text.isEmpty())
                 : (cat == Module.Category.SETTINGS ? open == c.appearance : category == cat && open != c.appearance);
         boolean hov = hovered(x, y, x + w, y + h);
-        if (sel) Draw.round(g, x, y, x + w, y + h, 3, t.selected);
-        else if (hov) Draw.round(g, x, y, x + w, y + h, 3, t.hover);
-        if (sel) Draw.round(g, x + 2, y + 5, x + 4, y + h - 5, 1, t.accent);
-        g.text(label, x + 9, y + 5, sel ? t.text : t.muted, false);
+        double hv = smooth(ease("cat:" + label, hov || sel, 8));
+        if (hv > 0) Draw.round(g, x, y, x + w, y + h, 4, sel ? t.selected : Draw.alpha(t.hover, hv));
+        if (sel) Draw.round(g, x + 1, y + 6, x + 3, y + h - 6, 1, t.accent);
+        Icons.draw(g, Icons.forCategory(cat), x + 8, y + 6, sel ? t.accent : Draw.mix(t.faint, t.text, hv * 0.6));
+        g.text(label, x + 22, y + 6, sel ? t.text : Draw.mix(t.muted, t.text, hv), false);
         hit("cat:" + label, x, y, x + w, y + h, new Click() {
             public void click(int mx, int my, int b) {
                 search.text = "";
@@ -121,7 +155,7 @@ public final class MenuScreen extends UiScreen {
                 }
             }
         });
-        return y + h + 2;
+        return y + h + 1;
     }
 
     private int cx() {
@@ -157,30 +191,85 @@ public final class MenuScreen extends UiScreen {
 
         List<Module> mods = visibleModules();
         int viewTop = top + 1, viewBottom = py + ph - 4;
-        contentHeight = mods.size() * ROW + 8;
+        int cols = w >= 380 ? 2 : 1;
+        int tileW = (w - TILE_GAP * (cols - 1)) / cols;
+        int rows = (mods.size() + cols - 1) / cols;
+        contentHeight = rows * (TILE_H + TILE_GAP) + 16;
         scroll += (scrollTarget - scroll) * 0.5;
         g.clip(cx(), viewTop, cx() + cw(), viewBottom);
-        int y = viewTop + 4 - (int) Math.round(scroll);
+        int y0 = viewTop + 10 - (int) Math.round(scroll);
         if (mods.isEmpty()) {
             Draw.centered(g, "No mods match \"" + search.text + "\"", cx() + cw() / 2, viewTop + 40, t.muted, false);
         }
-        for (final Module m : mods) {
-            if (y + ROW > viewTop && y < viewBottom) drawModuleRow(g, m, x - 8, y, w + 16, viewTop, viewBottom);
-            y += ROW;
+        for (int i = 0; i < mods.size(); i++) {
+            int tx = x + (i % cols) * (tileW + TILE_GAP), ty = y0 + (i / cols) * (TILE_H + TILE_GAP);
+            if (ty + TILE_H > viewTop && ty < viewBottom) drawTile(g, mods.get(i), tx, ty, tileW, viewTop, viewBottom);
         }
         g.unclip();
         drawScrollbar(g, viewTop, viewBottom);
     }
 
+    /** One mod as a tile: name, a two-line description, and its switch. Click to open settings. */
+    private void drawTile(Gfx g, final Module m, int x, int y, int w, int clipTop, int clipBottom) {
+        int h = TILE_H;
+        int hy1 = Math.max(y, clipTop), hy2 = Math.min(y + h, clipBottom);
+        boolean hov = hy2 > hy1 && hovered(x, hy1, x + w, hy2);
+        double hv = smooth(ease("tile:" + m.id, hov, 7));
+        double on = smooth(ease("on:" + m.id, m.enabled, 6));
+        int base = Draw.mix(t.surface, Draw.mix(t.surface, t.text, 0.06), hv);
+        Draw.round(g, x, y, x + w, y + h, 5, base);
+        Draw.outline(g, x, y, x + w, y + h, Draw.mix(t.line, t.accent, on * 0.3));
+        // Enabled mods get a short accent bar on the left edge.
+        if (on > 0.01) Draw.round(g, x, y + 10, x + 2, y + h - 10, 1, Draw.alpha(t.accent, on));
+        g.text(Draw.fit(g, m.name, w - 46), x + 10, y + 9, t.text, false);
+        String[] lines = twoLines(g, m.description, w - 20);
+        g.text(lines[0], x + 10, y + 22, t.muted, false);
+        if (lines[1] != null) g.text(lines[1], x + 10, y + 33, t.muted, false);
+        int sx = x + w - 30, sy = y + 8;
+        if (m.toggleable) drawSwitch(g, sx, sy, m.enabled, "tile:" + m.id);
+        if (hy2 > hy1) {
+            hit("row:" + m.id, x, hy1, x + w, hy2, new Click() {
+                public void click(int mx, int my, int b) {
+                    openPage(m);
+                }
+            });
+            if (m.toggleable) hit("sw:" + m.id, sx - 6, Math.max(y, clipTop), x + w, Math.min(y + 26, clipBottom), new Click() {
+                public void click(int mx, int my, int b) {
+                    m.setEnabled(!m.enabled);
+                    c.markDirty();
+                }
+            });
+        }
+    }
+
+    private String[] twoLines(Gfx g, String text, int w) {
+        String[] out = new String[2];
+        StringBuilder a = new StringBuilder();
+        String[] words = text.split(" ");
+        int i = 0;
+        for (; i < words.length; i++) {
+            String trial = a.length() == 0 ? words[i] : a + " " + words[i];
+            if (g.textWidth(trial) > w && a.length() > 0) break;
+            a = new StringBuilder(trial);
+        }
+        out[0] = Draw.fit(g, a.toString(), w);
+        if (i < words.length) {
+            StringBuilder b = new StringBuilder();
+            for (int k = i; k < words.length; k++) b.append(k == i ? "" : " ").append(words[k]);
+            out[1] = Draw.fit(g, b.toString(), w);
+        }
+        return out;
+    }
+
     private void drawModuleRow(Gfx g, final Module m, int x, int y, int w, int clipTop, int clipBottom) {
-        boolean hov = hovered(x, Math.max(y, clipTop), x + w, Math.min(y + ROW - 2, clipBottom)) && open == null;
-        if (hov) Draw.round(g, x, y, x + w, y + ROW - 2, 3, t.hover);
+        boolean hov = hovered(x, Math.max(y, clipTop), x + w, Math.min(y + TILE_H - 2, clipBottom)) && open == null;
+        if (hov) Draw.round(g, x, y, x + w, y + TILE_H - 2, 3, t.hover);
         g.text(m.name, x + 8, y + 5, t.text, false);
         g.text(Draw.fit(g, m.description, w - 60), x + 8, y + 16, t.muted, false);
         int sx = x + w - 30, sy = y + 9;
         if (m.toggleable) {
-            drawSwitch(g, sx, sy, m.enabled);
-            int hy1 = Math.max(y, clipTop), hy2 = Math.min(y + ROW - 2, clipBottom);
+            drawSwitch(g, sx, sy, m.enabled, "row:" + m.id);
+            int hy1 = Math.max(y, clipTop), hy2 = Math.min(y + TILE_H - 2, clipBottom);
             if (hy2 > hy1) {
                 hit("row:" + m.id, x, hy1, x + w, hy2, new Click() {
                     public void click(int mx, int my, int b) {
@@ -208,10 +297,12 @@ public final class MenuScreen extends UiScreen {
         int right = cx() + cw() - 16;
         // Edit HUD button
         String label = "Edit HUD";
-        int bw = g.textWidth(label) + 16, bh = 16, bx = right - bw, by = py + 11;
+        int bw = g.textWidth(label) + 28, bh = 18, bx = right - bw, by = py + 11;
         boolean hov = hovered(bx, by, bx + bw, by + bh);
-        Draw.round(g, bx, by, bx + bw, by + bh, 3, hov ? Draw.mix(t.accent, 0xFFFFFFFF, 0.12) : t.accent);
-        g.text(label, bx + 8, by + 4, t.onAccent, false);
+        double ehv = smooth(ease("edit", hov, 8));
+        Draw.round(g, bx, by, bx + bw, by + bh, 4, Draw.mix(t.accent, 0xFFFFFFFF, 0.14 * ehv));
+        Icons.draw(g, "edit", bx + 7, by + 5, t.onAccent);
+        g.text(label, bx + 20, by + 5, t.onAccent, false);
         hit("edit", bx, by, bx + bw, by + bh, new Click() {
             public void click(int mx, int my, int b) {
                 c.openHudEditor();
@@ -221,11 +312,14 @@ public final class MenuScreen extends UiScreen {
         int leftEdge = bx;
         if (c.game.inSingleplayer()) {
             String sl = c.shareAddress != null ? "Shared" : "Share world";
-            int sbw = g.textWidth(sl) + 16, sbx = bx - 8 - sbw;
+            int sbw = g.textWidth(sl) + 28, sbx = bx - 6 - sbw;
             boolean shov = hovered(sbx, by, sbx + sbw, by + bh);
-            Draw.round(g, sbx, by, sbx + sbw, by + bh, 3, shov ? t.selected : t.surface);
+            double shv = smooth(ease("share", shov, 8));
+            Draw.round(g, sbx, by, sbx + sbw, by + bh, 4, Draw.mix(t.surface, t.selected | 0xFF000000, shv * 0.5));
             Draw.outline(g, sbx, by, sbx + sbw, by + bh, t.line);
-            g.text(sl, sbx + 8, by + 4, c.shareAddress != null ? t.accent : t.text, false);
+            int scol = c.shareAddress != null ? t.accent : t.text;
+            Icons.draw(g, "share", sbx + 7, by + 5, scol);
+            g.text(sl, sbx + 20, by + 5, scol, false);
             hit("share", sbx, by, sbx + sbw, by + bh, new Click() {
                 public void click(int mx, int my, int b) {
                     c.openShare();
@@ -235,7 +329,7 @@ public final class MenuScreen extends UiScreen {
         }
         // Search field
         if (open == null) {
-            int sw = Math.min(120, cw() / 3), sx = leftEdge - 8 - sw;
+            int sw = Math.min(130, cw() / 3), sx = leftEdge - 6 - sw;
             textField(g, search, "Search mods", sx, by, sw, bh);
         }
     }
@@ -262,16 +356,15 @@ public final class MenuScreen extends UiScreen {
         });
     }
 
-    private void drawSwitch(Gfx g, int x, int y, boolean on) {
+    /** A Windows-style switch whose knob slides and whose colour fades when it changes. */
+    private void drawSwitch(Gfx g, int x, int y, boolean on, String key) {
         int w = 20, h = 10;
-        if (on) {
-            Draw.round(g, x, y, x + w, y + h, 5, t.accent);
-            Draw.round(g, x + w - 8, y + 2, x + w - 2, y + 8, 3, t.onAccent);
-        } else {
-            Draw.round(g, x, y, x + w, y + h, 5, t.muted);
-            Draw.round(g, x + 1, y + 1, x + w - 1, y + h - 1, 4, t.bg | 0xFF000000);
-            Draw.round(g, x + 2, y + 2, x + 8, y + 8, 3, t.muted);
-        }
+        double v = smooth(ease("switch:" + key, on, 7));
+        int track = Draw.mix(t.muted, t.accent, v);
+        Draw.round(g, x, y, x + w, y + h, 5, track);
+        if (v < 0.999) Draw.round(g, x + 1, y + 1, x + w - 1, y + h - 1, 4, Draw.alpha(t.bg | 0xFF000000, 1 - v));
+        int kx = x + 2 + (int) Math.round(v * 10);
+        Draw.round(g, kx, y + 2, kx + 6, y + 8, 3, Draw.mix(t.muted, t.onAccent, v));
     }
 
     private void drawScrollbar(Gfx g, int top, int bottom) {
@@ -322,7 +415,7 @@ public final class MenuScreen extends UiScreen {
         g.text(Draw.fit(g, m.description, w - (m.toggleable ? 40 : 0)), x, y, t.muted, false);
         if (m.toggleable) {
             int sx = x + w - 20;
-            drawSwitch(g, sx, y - 1, m.enabled);
+            drawSwitch(g, sx, y - 1, m.enabled, "main:" + m.id);
             if (y > viewTop - 10 && y < viewBottom) hit("main", sx - 4, Math.max(y - 4, viewTop), x + w, Math.min(y + 12, viewBottom), new Click() {
                 public void click(int mx, int my, int b) {
                     m.setEnabled(!m.enabled);
@@ -384,7 +477,7 @@ public final class MenuScreen extends UiScreen {
 
         if (s instanceof Setting.Toggle) {
             final Setting.Toggle tg = (Setting.Toggle) s;
-            drawSwitch(g, right - 20, mid - 5, tg.value);
+            drawSwitch(g, right - 20, mid - 5, tg.value, "set:" + (open != null ? open.id : "") + ":" + s.id);
             if (vis) hit("t:" + s.id, x, Math.max(y, top), right, Math.min(y + rowH, bottom), new Click() {
                 public void click(int mx, int my, int b) {
                     tg.value = !tg.value;

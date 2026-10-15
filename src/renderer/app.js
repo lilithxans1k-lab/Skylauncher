@@ -88,6 +88,35 @@ async function refreshMods() {
   state.mods = inst ? await sky.mods.list(inst.id) : [];
 }
 
+// ---------- profile avatars
+// A profile's picture is the icon of its main mod (Skyblocker, SkyHanni...), or a tinted letter.
+const LIBRARY_MODS = /fabric api|fabric-api|sodium|iris|e4mc|mod menu|modmenu|ferrite|entity ?culling|immediatelyfast|lithium|cloth|architectury|yacl|kotlin/i;
+function profileIconUrl(inst) {
+  const main = (inst.mods || []).find((m) => m.icon && !LIBRARY_MODS.test(`${m.title} ${m.file}`));
+  return main ? main.icon : null;
+}
+function hueOf(text) {
+  let x = 0;
+  for (const ch of text) x = (x * 31 + ch.charCodeAt(0)) >>> 0;
+  return x % 360;
+}
+function avatar(inst, size) {
+  const url = profileIconUrl(inst);
+  const box = h('span', { class: `avatar avatar-${size}`, style: `--hue:${hueOf(inst.name)}` });
+  if (url) {
+    box.append(h('img', { src: url, alt: '', onerror: (e) => { e.target.remove(); box.textContent = inst.name.slice(0, 1).toUpperCase(); } }));
+  } else {
+    box.textContent = inst.name.slice(0, 1).toUpperCase();
+  }
+  return box;
+}
+function fmtPlaytime(ms) {
+  const m = Math.floor((ms || 0) / 60000);
+  if (m < 1) return 'Not played yet';
+  if (m < 60) return `${m}m played`;
+  return `${Math.floor(m / 60)}h ${m % 60}m played`;
+}
+
 // ---------- sidebar
 function renderProfiles() {
   $('profiles').replaceChildren(
@@ -104,8 +133,10 @@ function renderProfiles() {
           await renderPanel();
         },
       },
-      h('span', { class: 'name', text: inst.name }),
-      h('span', { class: `sub${live ? ' live' : ''}`, text: live ? 'Playing' : `${inst.mcVersion} ${loaderName(inst.loader)}` }));
+      avatar(inst, 'sm'),
+      h('span', { class: 'profile-text' },
+        h('span', { class: 'name', text: inst.name }),
+        h('span', { class: `sub${live ? ' live' : ''}`, text: live ? 'Playing now' : `${inst.mcVersion} ${loaderName(inst.loader)}` })));
     }),
   );
 }
@@ -165,9 +196,9 @@ function renderHeader() {
   const otherRunning = state.game.id && !isThis && state.game.state !== 'stopped';
 
   let button;
-  if (running) button = h('button', { class: 'btn big', onclick: () => sky.game.stop(), text: 'Close game' });
+  if (running) button = h('button', { class: 'btn big', onclick: () => sky.game.stop() }, icon('stop', 14), 'Close game');
   else if (!state.account.active) button = h('button', { class: 'btn accent big', onclick: signIn, text: 'Sign in to play' });
-  else button = h('button', { class: 'btn accent big', disabled: preparing || otherRunning || !!state.busy, onclick: play, text: 'Play' });
+  else button = h('button', { class: `btn accent big play-btn${preparing ? ' busy' : ''}`, disabled: preparing || otherRunning || !!state.busy, onclick: play }, icon('play', 16), preparing ? 'Starting' : 'Play');
 
   let below;
   if (state.busy) {
@@ -178,9 +209,29 @@ function renderHeader() {
   else if (otherRunning) below = h('span', { class: 'hint-line', text: 'Another profile is running' });
   else if (inst.autoJoin) below = h('span', { class: 'hint-line', text: 'Joins mc.hypixel.net' });
 
-  const meta = [`Minecraft ${inst.mcVersion}`, loaderName(inst.loader), preset ? preset.name : null].filter(Boolean).join(', ');
+  const meta = [`Minecraft ${inst.mcVersion}`, loaderName(inst.loader), preset ? preset.name : null].filter(Boolean).join('  ·  ');
+  const mods = inst.mods || [];
+  const shaders = inst.shaders || [];
+  const stat = (ic, text) => h('span', { class: 'stat' }, icon(ic, 14), text);
+  const stats = h('div', { class: 'stats-row' },
+    stat('box', `${mods.length} mod${mods.length === 1 ? '' : 's'}`),
+    inst.loader === 'fabric' && stat('sun', `${shaders.length} shader${shaders.length === 1 ? '' : 's'}`),
+    stat('clock', fmtPlaytime(inst.playMs)),
+    inst.lastPlayed && h('span', { class: 'stat muted', text: `Last played ${fmtAgo(new Date(inst.lastPlayed).toISOString())}` }));
+  // A row of the profile's mod icons, so the header shows what's actually in it.
+  const icons = mods.filter((m) => m.icon && !LIBRARY_MODS.test(`${m.title} ${m.file}`)).slice(0, 7);
+  const strip = icons.length > 1 && h('div', { class: 'mod-strip', 'aria-hidden': 'true' },
+    ...icons.map((m) => h('img', { src: m.icon, alt: '', title: m.title, onerror: (e) => e.target.remove() })),
+    mods.length > icons.length && h('span', { class: 'more', text: `+${mods.length - icons.length}` }));
+  box.style.setProperty('--hue', hueOf(inst.name));
   box.replaceChildren(
-    h('div', { class: 'title' }, h('h1', { text: inst.name }), h('div', { class: 'meta', text: meta })),
+    h('div', { class: 'hero-glow', 'aria-hidden': 'true' }),
+    avatar(inst, 'lg'),
+    h('div', { class: 'title' },
+      h('h1', { text: inst.name }),
+      h('div', { class: 'meta', text: meta }),
+      stats,
+      strip),
     h('div', { class: 'play-area' }, button, below));
 }
 
@@ -235,12 +286,12 @@ async function renderMods(panel, inst) {
   let clientStatus = 'not-built';
   try { clientStatus = await sky.mods.clientStatus(inst.id); } catch { /* shown as unavailable */ }
   const toolbar = h('div', { class: 'toolbar' },
-    h('button', { class: 'btn accent', onclick: () => selectTab('browse'), text: 'Browse Modrinth' }),
+    h('button', { class: 'btn accent', onclick: () => selectTab('browse') }, icon('compass', 15), 'Browse Modrinth'),
     h('button', { class: 'btn', onclick: async () => {
       const added = await attempt(() => sky.mods.pickFiles(inst.id));
       if (added && added.length) { toast(`Added ${added.length} file${added.length === 1 ? '' : 's'}`); renderPanel(); }
-    }, text: 'Add .jar files' }),
-    h('button', { class: 'btn quiet', onclick: () => sky.instances.openFolder(inst.id, 'mods'), text: 'Open folder' }),
+    } }, icon('upload', 15), 'Add .jar files'),
+    h('button', { class: 'btn quiet', onclick: () => sky.instances.openFolder(inst.id, 'mods') }, icon('folder', 15), 'Open folder'),
     h('span', { class: 'spacer' }),
     preset && h('button', {
       class: 'btn quiet',
@@ -485,7 +536,7 @@ function resultCard(inst, m, have) {
 
   function showInstalled(rec) {
     actions.replaceChildren(
-      h('span', { class: 'installed', text: rec && rec.version ? `Installed ${rec.version}` : 'Installed' }),
+      h('span', { class: 'installed' }, icon('check', 14), rec && rec.version ? `Installed ${rec.version}` : 'Installed'),
       versionsLink());
   }
   function versionsLink() {
@@ -687,6 +738,12 @@ function openNewProfile() {
   loadVersions();
 }
 $('newProfile').addEventListener('click', openNewProfile);
+$('newProfile').prepend(icon('plus', 16));
+$('joinFriend').prepend(icon('users', 16));
+[['mods', 'box'], ['browse', 'compass'], ['settings', 'sliders'], ['logs', 'terminal']].forEach(([tab, ic]) => {
+  const b = document.querySelector(`#tabs [data-tab=${tab}]`);
+  if (b) b.prepend(icon(ic, 15));
+});
 
 // ---------- Join a friend (shared worlds)
 function openJoinFriend() {
@@ -872,6 +929,7 @@ sky.onUpdate((st) => {
       sky.presets.list(), sky.auth.get(), sky.settings.get(), sky.app.accent(), sky.game.running(),
     ]);
     Object.assign(state, { presets, account, settings });
+    try { if ((await sky.app.look()).mica) document.documentElement.classList.add('mica'); } catch { /* older main process */ }
     applyAccent(accent);
     if (running) state.game = { id: running, state: 'running' };
     renderAccount();

@@ -31,16 +31,26 @@ function accentColor() {
   return null;
 }
 
+// Windows 11 (22H2+) can draw the Mica material behind the window, which picks up a soft
+// tint from the wallpaper. Older Windows and other OSes get the plain background colour.
+const useMica = () => {
+  if (process.platform !== 'win32') return false;
+  const [major, , build] = require('os').release().split('.').map(Number);
+  return major >= 10 && build >= 22621;
+};
+
 function createWindow() {
   nativeTheme.themeSource = 'system';
   const c = chrome();
+  const mica = useMica();
   win = new BrowserWindow({
     width: 1180,
     height: 740,
     minWidth: 900,
     minHeight: 600,
     title: 'SkyLaunch',
-    backgroundColor: c.bg,
+    backgroundColor: mica ? '#00000000' : c.bg,
+    ...(mica ? { backgroundMaterial: 'mica' } : {}),
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: '#00000000', symbolColor: c.symbols, height: 36 },
     webPreferences: {
@@ -59,7 +69,7 @@ function createWindow() {
   nativeTheme.on('updated', () => {
     if (!win || win.isDestroyed()) return;
     const n = chrome();
-    win.setBackgroundColor(n.bg);
+    if (!useMica()) win.setBackgroundColor(n.bg);
     if (process.platform === 'win32') win.setTitleBarOverlay({ color: '#00000000', symbolColor: n.symbols, height: 36 });
   });
   if (process.platform === 'win32') {
@@ -211,6 +221,7 @@ app.whenReady().then(() => {
   handle('app:openExternal', (url) => { if (/^https:\/\//.test(url)) shell.openExternal(url); });
   handle('app:version', () => app.getVersion());
   handle('app:accent', () => accentColor());
+  handle('app:look', () => ({ mica: useMica() }));
 
   const updater = require('./core/updater');
   handle('update:get', () => updater.get());
