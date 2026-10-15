@@ -91,10 +91,27 @@ jobs:
         env:
           # No code-signing certificate: build an unsigned installer.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -o pipefail
-          npx electron-builder --win nsis --publish ${{ steps.ver.outputs.publish }} 2>&1 | tee dist.log || { tail -n 40 dist.log | sed 's/^/::error::/'; exit 1; }
+          npx electron-builder --win nsis --publish never 2>&1 | tee dist.log || { tail -n 40 dist.log | sed 's/^/::error::/'; exit 1; }
+      - name: Publish release
+        if: steps.ver.outputs.publish == 'always'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          V=$(node -p "require('./package.json').version")
+          shopt -s nullglob
+          FILES=(dist/*.exe dist/*.exe.blockmap dist/latest.yml)
+          if [[ ! -f dist/latest.yml ]]; then echo "::error::dist/latest.yml is missing, so launchers couldn't find this update."; exit 1; fi
+          if gh release view "v$V" >/dev/null 2>&1; then
+            # Release already exists (e.g. a retried run): replace its files.
+            gh release upload "v$V" "${FILES[@]}" --clobber
+            gh release edit "v$V" --draft=false --latest
+          else
+            gh release create "v$V" "${FILES[@]}" --target "$GITHUB_SHA" --title "SkyLaunch $V" --generate-notes --latest
+          fi
+          echo "Published SkyLaunch $V"
       - uses: actions/upload-artifact@v4
         with:
           name: SkyLaunch-installer
