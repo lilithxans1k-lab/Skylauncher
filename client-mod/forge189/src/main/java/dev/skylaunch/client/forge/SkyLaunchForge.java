@@ -1,6 +1,7 @@
 package dev.skylaunch.client.forge;
 
 import dev.skylaunch.client.Client;
+import dev.skylaunch.client.features.Extras;
 import dev.skylaunch.client.features.Visual;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -13,6 +14,8 @@ import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.BlockPos;
+import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.IChatComponent;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.DrawBlockHighlightEvent;
@@ -26,6 +29,7 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import org.lwjgl.opengl.GL11;
 
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -36,6 +40,8 @@ public final class SkyLaunchForge {
     private boolean sprintHeldByUs;
     private boolean fullbrightOn;
     private float savedGamma;
+    private boolean viewBobOff;
+    private boolean savedViewBob;
 
     public static Client client() {
         return client;
@@ -56,6 +62,22 @@ public final class SkyLaunchForge {
         pollKeys(mc);
         applyToggleSprint(mc);
         applyFullbright(mc);
+        applyViewBob(mc);
+    }
+
+    /** No view bobbing: switch the vanilla option off while on, put yours back when off. */
+    private void applyViewBob(Minecraft mc) {
+        boolean want = client.noViewBob.enabled;
+        if (want && !viewBobOff) {
+            savedViewBob = mc.gameSettings.viewBobbing;
+            viewBobOff = true;
+        }
+        if (want) {
+            mc.gameSettings.viewBobbing = false;
+        } else if (viewBobOff) {
+            mc.gameSettings.viewBobbing = savedViewBob;
+            viewBobOff = false;
+        }
     }
 
     private void pollKeys(Minecraft mc) {
@@ -63,7 +85,7 @@ public final class SkyLaunchForge {
             held.clear();
             return;
         }
-        int[] keys = {client.appearance.menuKey.code, client.toggleSprint.key.code};
+        int[] keys = client.watchedKeys();
         for (int code : keys) {
             if (code <= 0) continue;
             boolean down = client.game.keyDown(code);
@@ -100,7 +122,15 @@ public final class SkyLaunchForge {
 
     @SubscribeEvent
     public void onChat(ClientChatReceivedEvent event) {
-        if (event.type == 2) client.onActionBar(event.message.getUnformattedText());
+        if (event.type == 2) {
+            client.onActionBar(event.message.getUnformattedText());
+            return;
+        }
+        if (client.chatTimestamps.enabled && event.message != null) {
+            IChatComponent stamped = new ChatComponentText("\u00a7" + client.chatTimestamps.code() + client.chatTimestamps.stamp(new Date()) + "\u00a7r");
+            stamped.appendSibling(event.message);
+            event.message = stamped;
+        }
     }
 
     @SubscribeEvent
@@ -111,6 +141,14 @@ public final class SkyLaunchForge {
 
     @SubscribeEvent
     public void onOverlayPre(RenderGameOverlayEvent.Pre event) {
+        Extras.HideVanillaHud hide = client.hideVanillaHud;
+        switch (event.type) {
+            case HEALTH: if (hide.hide(hide.hearts)) { event.setCanceled(true); return; } break;
+            case ARMOR: if (hide.hide(hide.armor)) { event.setCanceled(true); return; } break;
+            case FOOD: if (hide.hide(hide.food)) { event.setCanceled(true); return; } break;
+            case EXPERIENCE: if (hide.hide(hide.xp)) { event.setCanceled(true); return; } break;
+            default: break;
+        }
         if (event.type == RenderGameOverlayEvent.ElementType.CROSSHAIRS && client.crosshair.enabled) {
             event.setCanceled(true);
             ForgeGfx g = new ForgeGfx();

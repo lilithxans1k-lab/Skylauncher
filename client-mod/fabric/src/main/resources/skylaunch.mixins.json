@@ -6,7 +6,8 @@
 		"CameraMixin",
 		"MinecraftMixin",
 		"MouseHandlerMixin",
-		"OptionInstanceMixin"
+		"OptionInstanceMixin",
+		"ScreenEffectRendererMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

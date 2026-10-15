@@ -15,7 +15,7 @@ A Minecraft launcher for Hypixel SkyBlock. Sign in with Microsoft, pick a preset
 - Modern presets pick the **newest Minecraft version every required mod supports**, and you can switch versions later — mods are re-fetched for the new version.
 - **Java is automatic**: Java 8 for 1.8.9, whatever Mojang specifies for modern versions (Eclipse Temurin, stored inside the launcher's folder).
 - **Auto-join Hypixel**, enable/disable mods with a switch, live game logs.
-- **SkyLaunch Client**, a built-in in-game mod for 26.2 Fabric and 1.8.9 Forge. Press Right Shift in game for FPS/CPS/ping/coords/keystrokes, a very customizable SkyBlock HUD (purse, bits, bank, health/mana bars, skill XP/h), zoom, toggle sprint, fullbright, crosshair, hit colour and block outline, plus a drag-and-snap HUD editor. See [client-mod/README.md](client-mod/README.md).
+- **SkyLaunch Client**, a built-in in-game mod for 26.2 Fabric and 1.8.9 Forge. Press Right Shift in game for FPS/CPS/ping/coords/keystrokes, a very customizable SkyBlock HUD (purse, bits, bank, health/mana bars, skill XP/h), zoom, toggle sprint, chat timestamps, fullbright, no view bobbing, no hurt camera, no fire overlay, crosshair, hit colour and block outline, coin tracker, speed/memory/session HUDs and vanilla HUD hiding, plus a drag-and-snap HUD editor. See [client-mod/README.md](client-mod/README.md).
 
 ## Run it (Windows 11)
 

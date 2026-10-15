@@ -29,6 +29,8 @@ public final class CoreTest {
         scoreboard();
         tab();
         actionBar();
+        coins();
+        timestamps();
         System.out.println(passed + " passed, " + failed + " failed");
         if (failed > 0) System.exit(1);
     }
@@ -122,5 +124,35 @@ public final class CoreTest {
         sb.readActionBar("+5 Combat (45.2%)", t0 + 121_000);
         eq(45.2, sb.skills.get("Combat").percent, "percent form");
         eq("Combat", sb.lastSkill.name, "latest skill");
+    }
+
+    static void coins() {
+        dev.skylaunch.client.sb.CoinTracker t = new dev.skylaunch.client.sb.CoinTracker();
+        long t0 = 10_000_000;
+        t.update(Double.NaN, "", t0);
+        eq(false, t.started(), "not started without purse");
+        t.update(1000, "Apple", t0);
+        eq(true, t.started(), "started");
+        t.update(1500, "Apple", t0 + 1000);
+        t.update(1200, "Apple", t0 + 2000);
+        eq(200.0, t.net(), "net after spend");
+        eq(500.0, t.gained(), "gains only");
+        t.update(50_000_000, "Banana", t0 + 3000);
+        eq(200.0, t.net(), "profile switch is not a gain");
+        t.update(50_000_100, "Banana", t0 + 4000);
+        eq(300.0, t.net(), "tracks new profile");
+        eq(300.0 / (60_000 / 3_600_000.0), t.perHour(t0 + 30_000, false), "per hour uses 1 minute minimum");
+        t.reset(t0 + 5000);
+        eq(0.0, t.net(), "reset");
+    }
+
+    static void timestamps() {
+        dev.skylaunch.client.features.Extras.ChatTimestamps ts = new dev.skylaunch.client.features.Extras.ChatTimestamps();
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.set(2026, 9, 15, 20, 41, 7);
+        eq("[8:41 PM] ", ts.stamp(cal.getTime()), "12h stamp");
+        ts.twentyFour.value = true;
+        ts.seconds.value = true;
+        eq("[20:41:07] ", ts.stamp(cal.getTime()), "24h stamp");
     }
 }
