@@ -186,7 +186,16 @@ app.whenReady().then(() => {
   handle('app:version', () => app.getVersion());
   handle('app:accent', () => accentColor());
 
+  const updater = require('./core/updater');
+  handle('update:get', () => updater.get());
+  handle('update:check', () => updater.check());
+  handle('update:install', () => updater.installNow());
+
   createWindow();
+  // Check for a newer launcher once the window is up.
+  win.webContents.once('did-finish-load', () => {
+    updater.init({ onState: (st) => send('update-state', st), gameRunning: () => !!launcher.runningId() });
+  });
 });
 
 app.on('window-all-closed', () => app.quit());

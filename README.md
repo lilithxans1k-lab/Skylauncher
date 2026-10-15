@@ -37,6 +37,19 @@ A Minecraft launcher for Hypixel SkyBlock. Sign in with Microsoft, pick a preset
 
 To include the in-game client, build it first with `npm run build:client` (needs JDK 25 and JDK 17, see client-mod/README.md). Or push to GitHub and let `.github/workflows/build.yml` build the mods and the installer for you.
 
+## Updates
+
+SkyLaunch updates itself from this repo's GitHub Releases. When it starts it checks for a newer release and downloads it in the background. Players get a **Restart to update** button in the sidebar, or the update installs by itself the next time they close SkyLaunch. It never restarts while Minecraft is running. **Check for updates** under the account button checks again by hand.
+
+To publish an update:
+
+1. On GitHub, open **Actions → Build → Run workflow**.
+2. Type the new version in **Release as this version** (higher than the last one, e.g. `0.1.1`), then click **Run workflow**.
+
+That run builds everything and publishes a release, and everyone's launcher picks it up. Pushing a tag like `v0.1.1` does the same. Normal pushes only build; they don't release.
+
+The repo has to be **public** for other people's launchers to see releases.
+
 ## Where things live
 
 `%APPDATA%\SkyLaunch\`

@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "adm-zip": "^0.5.16",
+    "electron-updater": "^6.8.9",
     "minecraft-launcher-core": "^3.18.2",
     "msmc": "^5.0.5"
   },
@@ -48,6 +49,13 @@
         ]
       }
     ],
-    "publish": null
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "lilithxans1k-lab",
+        "repo": "Skylauncher",
+        "releaseType": "release"
+      }
+    ]
   }
 }

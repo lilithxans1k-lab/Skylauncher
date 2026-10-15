@@ -629,6 +629,7 @@ sky.onGameState(async ({ id, state: st, code }) => {
   if (st !== 'preparing') state.busy = null;
   renderHeader();
   renderProfiles();
+  renderUpdate();
   if (st === 'stopped' && code && code !== 0) toast(`Minecraft closed with an error (code ${code}). See Logs.`, true);
   if (st === 'stopped') await refreshInstances();
 });
@@ -645,6 +646,52 @@ function applyAccent(hex) {
 }
 sky.onAccent(applyAccent);
 
+// ---------- launcher updates
+let updateState = { status: 'idle' };
+let checkedByHand = false;
+
+function renderUpdate() {
+  const box = $('update');
+  const u = updateState;
+  const parts = [];
+  if (u.status === 'ready') {
+    const running = state.game.state !== 'stopped';
+    parts.push(h('div', { class: 'update-card' },
+      h('strong', { text: `Update ${u.version} is ready` }),
+      h('span', { text: running ? 'Close Minecraft to restart, or it installs next time you open SkyLaunch.' : 'Restart now, or it installs next time you open SkyLaunch.' }),
+      h('button', {
+        class: 'btn accent', disabled: running, text: 'Restart to update',
+        onclick: () => attempt(() => sky.update.install()),
+      })));
+  } else if (u.status === 'downloading') {
+    parts.push(h('div', { class: 'update-card' },
+      h('strong', { text: `Downloading update ${u.version || ''}`.trim() }),
+      h('div', { class: 'bar' }, h('div', { class: 'fill', style: `width:${Math.round((u.progress || 0) * 100)}%` }))));
+  }
+  let line;
+  if (u.status === 'dev') line = `Version ${u.current || ''} (dev)`;
+  else if (u.status === 'checking') line = 'Checking for updates…';
+  else if (u.status === 'latest') line = `Version ${u.current} · Up to date`;
+  else if (u.status === 'error') line = checkedByHand ? u.error : `Version ${u.current || ''}`;
+  else line = `Version ${u.current || ''}`;
+  const canCheck = !['checking', 'downloading', 'ready', 'dev'].includes(u.status);
+  parts.push(h('div', { class: 'update-line' },
+    h('span', { text: line, title: u.error || '' }),
+    canCheck && h('button', {
+      class: 'link', text: 'Check for updates',
+      onclick: async () => { checkedByHand = true; await attempt(() => sky.update.check()); },
+    })));
+  box.replaceChildren(...parts);
+}
+
+sky.onUpdate((st) => {
+  const wasReady = updateState.status === 'ready';
+  updateState = st;
+  renderUpdate();
+  if (st.status === 'ready' && !wasReady) toast(`SkyLaunch ${st.version} downloaded`);
+  if (st.status === 'latest' && checkedByHand) { toast("You're on the latest version"); checkedByHand = false; }
+});
+
 // ---------- boot
 (async function boot() {
   try {
@@ -655,6 +702,8 @@ sky.onAccent(applyAccent);
     applyAccent(accent);
     if (running) state.game = { id: running, state: 'running' };
     renderAccount();
+    try { updateState = await sky.update.get(); } catch { /* older main process */ }
+    renderUpdate();
     await refreshInstances();
   } catch (e) {
     toast(e.message, true);

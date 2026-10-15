@@ -4,6 +4,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Release as this version (e.g. 0.2.0). Leave empty to just build."
+        required: false
+        default: ""
 
 jobs:
   client-fabric:
@@ -44,6 +49,8 @@ jobs:
     name: Windows installer
     needs: [client-fabric, client-forge]
     runs-on: windows-latest
+    permissions:
+      contents: write   # lets a release upload the installer
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -65,14 +72,29 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run test:client
+      - name: Decide version
+        id: ver
+        shell: bash
+        run: |
+          V=""
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then V="${GITHUB_REF#refs/tags/v}"; fi
+          if [[ -n "${{ github.event.inputs.release_version }}" ]]; then V="${{ github.event.inputs.release_version }}"; V="${V#v}"; fi
+          if [[ -n "$V" ]]; then
+            npm version "$V" --no-git-tag-version --allow-same-version
+            echo "publish=always" >> "$GITHUB_OUTPUT"
+            echo "Releasing SkyLaunch $V"
+          else
+            echo "publish=never" >> "$GITHUB_OUTPUT"
+          fi
       - name: Build installer
         shell: bash
         env:
           # No code-signing certificate: build an unsigned installer.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -o pipefail
-          npm run dist 2>&1 | tee dist.log || { tail -n 40 dist.log | sed 's/^/::error::/'; exit 1; }
+          npx electron-builder --win nsis --publish ${{ steps.ver.outputs.publish }} 2>&1 | tee dist.log || { tail -n 40 dist.log | sed 's/^/::error::/'; exit 1; }
       - uses: actions/upload-artifact@v4
         with:
           name: SkyLaunch-installer
