@@ -646,6 +646,7 @@ async function renderSettings(panel, inst) {
       } })), 'Leave on Automatic to use the Java SkyLaunch downloads.'),
     field('Java arguments', h('input', { class: 'input', value: inst.jvmArgs || '', placeholder: 'None', onchange: (e) => save({ jvmArgs: e.target.value }) })),
     h('hr', { class: 'divider' }),
+    field('Theme', themePicker(), 'Applies to the launcher and the in-game menu. You can pick a different one in game under Appearance.'),
     h('label', { class: 'check' },
       h('input', { type: 'checkbox', checked: s.closeOnLaunch, onchange: async (e) => { state.settings = await sky.settings.set({ closeOnLaunch: e.target.checked }); } }),
       h('span', {}, 'Minimise SkyLaunch while playing', h('small', { text: 'Applies to every profile.' }))),
@@ -864,17 +865,41 @@ sky.onGameState(async ({ id, state: st, code }) => {
   if (st === 'stopped') await refreshInstances();
 });
 
-// Use the Windows accent colour, with black or white text on it, whichever reads better.
-function applyAccent(hex) {
-  if (!hex) return;
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
-    .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  const root = document.documentElement.style;
-  root.setProperty('--accent', hex);
-  root.setProperty('--on-accent', lum > 0.25 ? '#000000' : '#ffffff');
+// ---------- themes (the in-game menu uses the same four; see Theme.java)
+const THEMES = [
+  { id: 'midnight', name: 'Midnight', note: 'Dark' },
+  { id: 'dawn', name: 'Dawn', note: 'Orange and yellow' },
+  { id: 'violet', name: 'Violet', note: 'Purple' },
+  { id: 'light', name: 'Light', note: 'White and blue' },
+];
+function applyTheme(id, fade) {
+  const root = document.documentElement;
+  if (fade) {
+    root.classList.add('theme-fade');
+    clearTimeout(applyTheme.t);
+    applyTheme.t = setTimeout(() => root.classList.remove('theme-fade'), 320);
+  }
+  root.dataset.theme = THEMES.some((t) => t.id === id) ? id : 'midnight';
 }
-sky.onAccent(applyAccent);
+
+function themePicker() {
+  const current = document.documentElement.dataset.theme || 'midnight';
+  const pick = async (id) => {
+    applyTheme(id, true);
+    state.settings = await sky.settings.set({ theme: id });
+    picker.querySelectorAll('.theme-card').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.id === id)));
+  };
+  const picker = h('div', { class: 'theme-picker', role: 'radiogroup', 'aria-label': 'Theme' },
+    ...THEMES.map((t) => h('button', {
+      class: 'theme-card', role: 'radio', 'data-id': t.id, 'aria-checked': String(t.id === current),
+      onclick: () => pick(t.id),
+    },
+    // A tiny picture of the launcher in that theme: sidebar, two cards and a Play button.
+    h('span', { class: `theme-mini t-${t.id}` },
+      h('i', { class: 'm-side' }), h('i', { class: 'm-card' }), h('i', { class: 'm-card short' }), h('i', { class: 'm-play' })),
+    h('span', { class: 'theme-name' }, h('strong', { text: t.name }), h('small', { text: t.note })))));
+  return picker;
+}
 
 // ---------- launcher updates
 let updateState = { status: 'idle' };
@@ -925,12 +950,15 @@ sky.onUpdate((st) => {
 // ---------- boot
 (async function boot() {
   try {
-    const [presets, account, settings, accent, running] = await Promise.all([
-      sky.presets.list(), sky.auth.get(), sky.settings.get(), sky.app.accent(), sky.game.running(),
+    const [presets, account, settings, running] = await Promise.all([
+      sky.presets.list(), sky.auth.get(), sky.settings.get(), sky.game.running(),
     ]);
     Object.assign(state, { presets, account, settings });
-    try { if ((await sky.app.look()).mica) document.documentElement.classList.add('mica'); } catch { /* older main process */ }
-    applyAccent(accent);
+    try {
+      const look = await sky.app.look();
+      if (look.mica) document.documentElement.classList.add('mica');
+      applyTheme(look.theme || settings.theme);
+    } catch { applyTheme(settings.theme); }
     if (running) state.game = { id: running, state: 'running' };
     renderAccount();
     try { updateState = await sky.update.get(); } catch { /* older main process */ }

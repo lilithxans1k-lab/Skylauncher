@@ -23,7 +23,7 @@ It comes in two builds that share one codebase:
 - **Combat & QoL**: armor status with durability, potion effects, zoom (hold C, scroll to adjust), toggle sprint & sneak (V, sneak key optional), reach display, combo counter, chat timestamps
 - **Visual**: fullbright, custom crosshair (cross, dot, circle, T), hit colour, block outline, no view bobbing (on by default), no hurt camera, no fire overlay
 - **Share world** (in the menu header, singleplayer on 26.2): opens your world to friends through e4mc and copies an invite with your exact mod list. See the main README.
-- **Appearance**: dark/light theme, accent colour, the menu key, background blur behind menus (26.2), and the default look for every HUD element (value and label colours, background, rounded corners, padding, text shadow)
+- **Appearance**: theme (Midnight, Dawn, Violet or Light, matching the launcher by default), an optional custom accent colour, the menu key, background blur behind menus (26.2), and the default look for every HUD element (value and label colours, background, rounded corners, padding, text shadow)
 
 Every HUD element also has its own size, background, shadow and colour overrides. **Edit HUD** lets you drag elements, scroll to resize, and right-click for settings. Elements snap to screen edges, the centre lines and each other.
 

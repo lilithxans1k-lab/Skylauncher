@@ -2,6 +2,7 @@ package dev.skylaunch.client.ui;
 
 import dev.skylaunch.client.Client;
 import dev.skylaunch.client.Gfx;
+import dev.skylaunch.client.module.Appearance;
 import dev.skylaunch.client.module.Module;
 import dev.skylaunch.client.module.Setting;
 import dev.skylaunch.client.util.Draw;
@@ -562,7 +563,50 @@ public final class MenuScreen extends UiScreen {
         return y;
     }
 
+    /** Theme picker: one swatch per theme, each showing its panel colour and accent. */
+    private void drawThemePicker(Gfx g, final Setting.Choice ch, int right, int mid, boolean vis) {
+        int sw = 18, gap = 5, n = ch.options.length;
+        int x = right - n * sw - (n - 1) * gap;
+        String hoverName = null;
+        for (int k = 0; k < n; k++) {
+            final int idx = k;
+            String o = ch.options[k];
+            boolean match = Appearance.MATCH.equals(o);
+            Theme th = Theme.named(match ? Appearance.launcherTheme() : o, 0);
+            int x1 = x, y1 = mid - sw / 2, x2 = x + sw, y2 = mid + sw / 2;
+            boolean sel = ch.index == k, hov = hovered(x1, y1, x2, y2);
+            if (sel) Draw.round(g, x1 - 2, y1 - 2, x2 + 2, y2 + 2, 6, t.accent);
+            else if (hov) Draw.round(g, x1 - 2, y1 - 2, x2 + 2, y2 + 2, 6, t.line);
+            Draw.round(g, x1, y1, x2, y2, 4, th.bg | 0xFF000000);
+            Draw.outline(g, x1 + 1, y1 + 1, x2 - 1, y2 - 1, Draw.withAlpha(th.text, 40));
+            if (match) {
+                // "Match launcher": a small link mark instead of a dot.
+                g.rect(x1 + 5, mid - 1, x2 - 5, mid + 1, th.accent);
+                g.rect(x1 + 5, mid - 3, x1 + 7, mid + 3, th.accent);
+                g.rect(x2 - 7, mid - 3, x2 - 5, mid + 3, th.accent);
+            } else {
+                Draw.round(g, x1 + 5, y1 + 5, x2 - 5, y2 - 5, 4, th.accent);
+            }
+            if (hov) hoverName = o;
+            if (vis) hit("th:" + k, x1 - 2, y1 - 2, x2 + 2, y2 + 2, new Click() {
+                public void click(int mx, int my, int b) {
+                    ch.index = idx;
+                    c.markDirty();
+                }
+            });
+            x += sw + gap;
+        }
+        String label = hoverName != null ? hoverName : ch.current();
+        if (Appearance.MATCH.equals(label)) label = "Match launcher (" + Appearance.launcherTheme() + ")";
+        int lx = right - n * sw - (n - 1) * gap - 10 - g.textWidth(label);
+        g.text(label, lx, mid - 4, hoverName != null ? t.text : t.muted, false);
+    }
+
     private void drawChoice(Gfx g, final Setting.Choice ch, int right, int y, int mid, int top, int bottom, boolean vis) {
+        if (ch == c.appearance.theme) {
+            drawThemePicker(g, ch, right, mid, vis);
+            return;
+        }
         int total = 0;
         for (String o : ch.options) total += g.textWidth(o) + 12;
         if (ch.options.length <= 3 && total <= 190) {

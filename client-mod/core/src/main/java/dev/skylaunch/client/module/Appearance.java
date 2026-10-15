@@ -5,6 +5,8 @@ import dev.skylaunch.client.ui.Theme;
 /** Menu theme, menu key and the default look every HUD element inherits. */
 public final class Appearance extends Module {
     public final Setting.Choice theme;
+    public static final String MATCH = "Match launcher";
+    public final Setting.Toggle customAccent;
     public final Setting.Color accent;
     public final Setting.KeyBind menuKey;
     public final Setting.Toggle blur;
@@ -23,10 +25,14 @@ public final class Appearance extends Module {
     public Appearance() {
         super("appearance", "Appearance", "Menu theme and the default look of every HUD element.", Category.SETTINGS, true);
         toggleable = false;
-        theme = add(new Setting.Choice("theme", "Menu theme", 0, "Dark", "Light"));
+        theme = add(new Setting.Choice("theme", "Menu theme", 0, MATCH, "Midnight", "Dawn", "Violet", "Light"));
         theme.in("Menu");
+        customAccent = add(new Setting.Toggle("custom_accent", "Use my own accent colour", false));
+        customAccent.in("Menu");
         accent = add(new Setting.Color("accent", "Accent colour", 0xFF4CC2FF, false));
-        accent.in("Menu");
+        accent.in("Menu").showIf(new Setting.Visibility() {
+            public boolean visible() { return customAccent.value; }
+        });
         menuKey = add(new Setting.KeyBind("menu_key", "Open this menu", "RIGHT_SHIFT"));
         menuKey.in("Menu");
         blur = add(new Setting.Toggle("blur", "Blur the game behind menus", true));
@@ -54,7 +60,23 @@ public final class Appearance extends Module {
         onlyInSkyBlock.in("HUD defaults");
     }
 
+    /** The theme the launcher was using when it started the game (passed as -Dskylaunch.theme). */
+    public static String launcherTheme() {
+        String s = null;
+        try {
+            s = System.getProperty("skylaunch.theme");
+        } catch (SecurityException ignored) {
+        }
+        if (s != null) for (String n : Theme.NAMES) if (n.equalsIgnoreCase(s.trim())) return n;
+        return "Midnight";
+    }
+
+    /** The theme name in effect, with "Match launcher" resolved. */
+    public String themeName() {
+        return theme.is(MATCH) ? launcherTheme() : theme.current();
+    }
+
     public Theme menuTheme() {
-        return theme.is("Light") ? Theme.light(accent.argb) : Theme.dark(accent.argb);
+        return Theme.named(themeName(), customAccent.value ? accent.argb : 0);
     }
 }

@@ -33,7 +33,7 @@ function splitArgs(str) {
 }
 
 /**
- * hooks: { progress(label, fraction), log(line), state(state), settings }
+ * hooks: { progress(label, fraction), log(line), state(state), settings, theme, joinAddress }
  * state values: 'preparing' | 'running' | 'stopped'
  */
 async function launch(id, hooks) {
@@ -78,7 +78,8 @@ async function launch(id, hooks) {
     forge,
     javaPath,
     memory: { max: `${memoryMb}M`, min: `${Math.min(1024, memoryMb)}M` },
-    customArgs: splitArgs(inst.jvmArgs || settings.jvmArgs),
+    // The in-game menu matches the launcher's theme unless the player picks another one.
+    customArgs: [...(hooks.theme ? [`-Dskylaunch.theme=${hooks.theme}`] : []), ...splitArgs(inst.jvmArgs || settings.jvmArgs)],
     overrides: { gameDirectory: paths.instanceDir(id), detached: false },
     window: settings.width && settings.height ? { width: String(settings.width), height: String(settings.height) } : undefined,
   };

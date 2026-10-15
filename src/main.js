@@ -6,7 +6,7 @@ const store = require('./core/store');
 if (!app.requestSingleInstanceLock()) app.quit();
 
 let win;
-const DEFAULT_SETTINGS = { defaultMemoryMb: 4096, javaPath: '', jvmArgs: '', closeOnLaunch: false, width: 0, height: 0 };
+const DEFAULT_SETTINGS = { defaultMemoryMb: 4096, javaPath: '', jvmArgs: '', closeOnLaunch: false, width: 0, height: 0, theme: '' };
 
 const settings = {
   get: () => ({ ...DEFAULT_SETTINGS, ...store.read(paths.settingsFile(), {}) }),
@@ -17,11 +17,32 @@ const settings = {
   },
 };
 
-// Window chrome follows Windows' light/dark setting.
-const chrome = () =>
-  nativeTheme.shouldUseDarkColors
-    ? { bg: '#1f1f1f', symbols: '#e6e6e6' }
-    : { bg: '#f9f9f9', symbols: '#1a1a1a' };
+// Launcher themes. The window frame (background and the min/max/close symbols) follows the
+// theme too. An empty setting means "not chosen yet": Midnight, or Light if Windows is light.
+const THEMES = {
+  midnight: { name: 'Midnight', bg: '#101216', symbols: '#eef0f4', dark: true },
+  dawn: { name: 'Dawn', bg: '#15100c', symbols: '#f7efe6', dark: true },
+  violet: { name: 'Violet', bg: '#0f0c16', symbols: '#f2eefa', dark: true },
+  light: { name: 'Light', bg: '#eef1f6', symbols: '#161a22', dark: false },
+};
+function themeId() {
+  const t = settings.get().theme;
+  if (THEMES[t]) return t;
+  // First run: pick from Windows' light/dark mode once (before themeSource is pinned) and keep it.
+  const picked = nativeTheme.shouldUseDarkColors ? 'midnight' : 'light';
+  settings.set({ theme: picked });
+  return picked;
+}
+const chrome = () => THEMES[themeId()];
+
+// Mica takes its light/dark tint from nativeTheme, so point it at the theme's side.
+function applyTheme() {
+  const c = chrome();
+  nativeTheme.themeSource = c.dark ? 'dark' : 'light';
+  if (!win || win.isDestroyed()) return;
+  if (!useMica()) win.setBackgroundColor(c.bg);
+  if (process.platform === 'win32') win.setTitleBarOverlay({ color: '#00000000', symbolColor: c.symbols, height: 36 });
+}
 
 function accentColor() {
   try {
@@ -40,8 +61,8 @@ const useMica = () => {
 };
 
 function createWindow() {
-  nativeTheme.themeSource = 'system';
   const c = chrome();
+  nativeTheme.themeSource = c.dark ? 'dark' : 'light';
   const mica = useMica();
   win = new BrowserWindow({
     width: 1180,
@@ -66,17 +87,6 @@ function createWindow() {
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', (e) => e.preventDefault());
-  nativeTheme.on('updated', () => {
-    if (!win || win.isDestroyed()) return;
-    const n = chrome();
-    if (!useMica()) win.setBackgroundColor(n.bg);
-    if (process.platform === 'win32') win.setTitleBarOverlay({ color: '#00000000', symbolColor: n.symbols, height: 36 });
-  });
-  if (process.platform === 'win32') {
-    systemPreferences.on('accent-color-changed', () => {
-      if (win && !win.isDestroyed()) win.webContents.send('accent', accentColor());
-    });
-  }
 }
 
 app.on('second-instance', () => {
@@ -175,7 +185,11 @@ app.whenReady().then(() => {
   handle('auth:signOut', (uuid) => auth.signOut(uuid));
 
   handle('settings:get', () => settings.get());
-  handle('settings:set', (patch) => settings.set(patch));
+  handle('settings:set', (patch) => {
+    const next = settings.set(patch);
+    if ('theme' in patch) applyTheme();
+    return next;
+  });
   handle('settings:pickJava', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(win, {
       title: 'Choose a Java executable',
@@ -193,6 +207,7 @@ app.whenReady().then(() => {
     try {
       await launcher.launch(id, {
         settings: s,
+        theme: chrome().name,
         joinAddress,
         progress,
         log: (line) => send('log', line),
@@ -221,7 +236,7 @@ app.whenReady().then(() => {
   handle('app:openExternal', (url) => { if (/^https:\/\//.test(url)) shell.openExternal(url); });
   handle('app:version', () => app.getVersion());
   handle('app:accent', () => accentColor());
-  handle('app:look', () => ({ mica: useMica() }));
+  handle('app:look', () => ({ mica: useMica(), theme: themeId() }));
 
   const updater = require('./core/updater');
   handle('update:get', () => updater.get());

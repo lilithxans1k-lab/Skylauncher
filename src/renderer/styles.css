@@ -1,69 +1,128 @@
 /* SkyLaunch: polished, native Windows 11 feel.
    Layered surfaces (Mica behind the window on Windows 11), raised cards for content,
-   one accent colour (your Windows accent, set at runtime as --accent), and a per-profile
-   hue (--hue) that gives each profile its own avatar tint and header glow. */
+   one accent colour per theme, and a per-profile hue (--hue) that gives each profile its
+   own avatar tint and header glow.
+   Themes: Midnight (default), Dawn, Violet, Light, set as <html data-theme="...">. The
+   in-game menu uses the same palettes (client-mod/core/.../ui/Theme.java). */
 :root {
-  --accent: #005fb8;
-  --on-accent: #ffffff;
-  --base: #f3f3f3;            /* window, behind everything */
-  --content: #f9f9f9;         /* the main sheet */
-  --card: #ffffff;            /* lists, inputs, dialogs */
-  --card-hover: #fbfbfb;
-  --hover: rgba(0, 0, 0, 0.04);
-  --selected: rgba(0, 0, 0, 0.06);
-  --line: rgba(0, 0, 0, 0.08);
-  --line-strong: rgba(0, 0, 0, 0.14);
-  --text: #1a1a1a;
-  --muted: #5f5f5f;
-  --faint: #8a8a8a;
-  --danger: #c42b1c;
-  --ok: #0f7b0f;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow: 0 2px 6px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08);
   --radius-s: 6px;
   --radius: 8px;
   --radius-l: 12px;
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+}
+
+/* Shared by the three dark themes. */
+:root, :root[data-theme="midnight"], :root[data-theme="dawn"], :root[data-theme="violet"] {
+  color-scheme: dark;
+  --on-accent: #000000;
+  --hover: rgba(255, 255, 255, 0.05);
+  --selected: rgba(255, 255, 255, 0.08);
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.13);
+  --ok: #6ccb5f;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.35);
+  --avatar-bg: hsl(var(--hue, 210) 35% 26%);
+  --avatar-fg: hsl(var(--hue, 210) 70% 80%);
+  --glow: hsl(var(--hue, 210) 80% 55% / 0.14);
+}
+
+/* Midnight: blue-black, sky-blue accent. */
+:root, :root[data-theme="midnight"] {
+  --accent: #4cc2ff;
+  --accent-2: #4cc2ff;
+  --base: #101216;
+  --content: #16181d;
+  --card: #20232a;
+  --card-hover: #252830;
+  --text: #eef0f4;
+  --muted: #a3a8b3;
+  --faint: #737985;
+  --danger: #ff99a4;
+  --mica-content: rgba(22, 24, 29, 0.74);
+}
+
+/* Dawn: warm charcoal, orange into yellow. */
+:root[data-theme="dawn"] {
+  --accent: #ff9f2e;
+  --accent-2: #ffd23f;
+  --base: #15100c;
+  --content: #1d1712;
+  --card: #29211a;
+  --card-hover: #30271f;
+  --line: rgba(255, 220, 180, 0.08);
+  --line-strong: rgba(255, 220, 180, 0.15);
+  --hover: rgba(255, 230, 200, 0.05);
+  --selected: rgba(255, 200, 140, 0.09);
+  --text: #f7efe6;
+  --muted: #bfae9c;
+  --faint: #8a7a6a;
+  --danger: #ff8a80;
+  --avatar-bg: hsl(var(--hue, 30) 40% 24%);
+  --glow: hsl(36 100% 60% / 0.13);
+  --mica-content: rgba(29, 23, 18, 0.78);
+}
+
+/* Violet: deep purple, lavender accent. */
+:root[data-theme="violet"] {
+  --accent: #a87cff;
+  --accent-2: #d08cff;
+  --base: #0f0c16;
+  --content: #17131f;
+  --card: #221c2d;
+  --card-hover: #282133;
+  --line: rgba(230, 210, 255, 0.08);
+  --line-strong: rgba(230, 210, 255, 0.15);
+  --hover: rgba(240, 225, 255, 0.05);
+  --selected: rgba(200, 160, 255, 0.1);
+  --text: #f2eefa;
+  --muted: #b2a8c6;
+  --faint: #7d7392;
+  --danger: #ff99b4;
+  --avatar-bg: hsl(var(--hue, 270) 35% 26%);
+  --glow: hsl(268 90% 65% / 0.14);
+  --mica-content: rgba(23, 19, 31, 0.78);
+}
+
+/* Light: white and blue. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --accent: #0067c0;
+  --accent-2: #2b8cff;
+  --on-accent: #ffffff;
+  --base: #eef1f6;
+  --content: #f9fafc;
+  --card: #ffffff;
+  --card-hover: #fbfcfe;
+  --hover: rgba(0, 20, 60, 0.04);
+  --selected: rgba(0, 90, 200, 0.08);
+  --line: rgba(0, 20, 60, 0.08);
+  --line-strong: rgba(0, 20, 60, 0.14);
+  --text: #161a22;
+  --muted: #5a6170;
+  --faint: #8890a0;
+  --danger: #c42b1c;
+  --ok: #0f7b0f;
+  --shadow-sm: 0 1px 2px rgba(0, 20, 60, 0.06);
+  --shadow: 0 2px 6px rgba(0, 20, 60, 0.06), 0 1px 2px rgba(0, 20, 60, 0.04);
+  --shadow-lg: 0 24px 64px rgba(0, 20, 60, 0.18), 0 4px 12px rgba(0, 20, 60, 0.08);
   --avatar-bg: hsl(var(--hue, 210) 60% 92%);
   --avatar-fg: hsl(var(--hue, 210) 45% 32%);
   --glow: hsl(var(--hue, 210) 80% 60% / 0.16);
-  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
-  --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
-  color-scheme: light dark;
+  --mica-content: rgba(255, 255, 255, 0.62);
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --accent: #4cc2ff;
-    --on-accent: #000000;
-    --base: #1a1a1a;
-    --content: #202020;
-    --card: #2b2b2b;
-    --card-hover: #303030;
-    --hover: rgba(255, 255, 255, 0.05);
-    --selected: rgba(255, 255, 255, 0.08);
-    --line: rgba(255, 255, 255, 0.07);
-    --line-strong: rgba(255, 255, 255, 0.13);
-    --text: #f3f3f3;
-    --muted: #a9a9a9;
-    --faint: #7c7c7c;
-    --danger: #ff99a4;
-    --ok: #6ccb5f;
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow: 0 2px 8px rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.35);
-    --avatar-bg: hsl(var(--hue, 210) 35% 26%);
-    --avatar-fg: hsl(var(--hue, 210) 70% 80%);
-    --glow: hsl(var(--hue, 210) 80% 55% / 0.14);
-  }
-}
+
+/* Switching themes fades the colours instead of snapping. */
+html.theme-fade, html.theme-fade * { transition: background-color .25s ease, border-color .25s ease, color .25s ease, box-shadow .25s ease !important; }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
 body { background: var(--base); color: var(--text); font: 14px/1.45 var(--font); overflow: hidden; -webkit-font-smoothing: antialiased; }
 /* On Windows 11 the window itself is Mica; let it show through the frame. */
 html.mica body { background: transparent; }
-html.mica { --content: rgba(255, 255, 255, 0.6); }
-@media (prefers-color-scheme: dark) { html.mica { --content: rgba(32, 32, 32, 0.72); } }
+html.mica { --content: var(--mica-content); }
 button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .drag { -webkit-app-region: drag; }
@@ -166,6 +225,7 @@ img { display: block; }
 .btn.accent { background: var(--accent); border-color: transparent; color: var(--on-accent); font-weight: 600; box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.18), var(--shadow-sm); }
 .btn.accent:hover { filter: brightness(1.07); background: var(--accent); }
 .btn.big { min-width: 150px; min-height: 46px; padding: 0 24px; font-size: 16px; border-radius: 10px; }
+.btn.accent.play-btn { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
 .play-btn { box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18), 0 6px 20px color-mix(in srgb, var(--accent) 35%, transparent); }
 .play-btn .ic { width: 15px; height: 15px; }
 .play-btn.busy { animation: pulse 1.4s ease-in-out infinite; }
@@ -321,7 +381,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.35); backdrop-filter: blur(2px); 
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .toast.error { background: var(--danger); color: #fff; }
-@media (prefers-color-scheme: dark) { .toast.error { color: #000; } }
+:root:not([data-theme="light"]) .toast.error { color: #000; }
 
 .welcome { height: 100%; display: grid; place-content: center; justify-items: center; text-align: center; gap: 8px; color: var(--muted); }
 .welcome h2 { margin: 0; color: var(--text); font: 600 22px var(--font-display); }
@@ -359,3 +419,31 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.35); backdrop-filter: blur(2px); 
 .row.off-soft .icon { opacity: 0.8; }
 
 @media (prefers-reduced-motion: reduce) { *, *::after { transition: none !important; animation: none !important; } }
+
+/* ---------- theme picker (Settings) */
+.theme-picker { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.theme-card {
+  display: grid; gap: 8px; padding: 8px; text-align: left; cursor: pointer;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-l);
+  box-shadow: var(--shadow-sm); transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.theme-card:hover { border-color: var(--line-strong); transform: translateY(-1px); box-shadow: var(--shadow); }
+.theme-card[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow); }
+.theme-name { display: grid; padding: 0 2px 2px; line-height: 1.25; }
+.theme-name strong { font-weight: 600; }
+.theme-name small { font-size: 11.5px; color: var(--muted); }
+/* Each preview uses its theme's literal colours, whatever theme is active. */
+.theme-mini {
+  --b: #101216; --c: #20232a; --s: #16181d; --a: #4cc2ff; --a2: #4cc2ff;
+  position: relative; display: block; height: 64px; border-radius: 8px; overflow: hidden;
+  background: var(--b); box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.18);
+}
+.theme-mini.t-dawn { --b: #15100c; --c: #29211a; --s: #1d1712; --a: #ff9f2e; --a2: #ffd23f; }
+.theme-mini.t-violet { --b: #0f0c16; --c: #221c2d; --s: #17131f; --a: #a87cff; --a2: #d08cff; }
+.theme-mini.t-light { --b: #eef1f6; --c: #ffffff; --s: #f9fafc; --a: #0067c0; --a2: #2b8cff; }
+.theme-mini i { position: absolute; display: block; border-radius: 3px; }
+.theme-mini .m-side { left: 0; top: 0; bottom: 0; width: 26%; border-radius: 0; background: var(--s); }
+.theme-mini .m-card { left: 33%; right: 8%; top: 12px; height: 12px; background: var(--c); }
+.theme-mini .m-card.short { top: 30px; right: 30%; }
+.theme-mini .m-play { right: 8%; bottom: 9px; width: 30%; height: 10px; background: linear-gradient(135deg, var(--a), var(--a2)); }
+@media (max-width: 1000px) { .theme-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
