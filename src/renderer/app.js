@@ -43,7 +43,14 @@ function toast(msg, isError = false) {
   toastTimer = setTimeout(() => (t.className = 'toast'), isError ? 7000 : 3000);
 }
 
+// How many main-process calls are in flight. Progress events only count while one is (or while
+// a game is starting); a late "Mods ready" arriving after its call has finished is ignored, so
+// the progress bar can't get stuck and lock the Play button.
+let opsInFlight = 0;
+const gameStarting = () => state.game.state === 'preparing';
+
 async function attempt(fn, { busyLabel } = {}) {
+  opsInFlight++;
   if (busyLabel) { state.busy = { label: busyLabel, fraction: 0 }; renderHeader(); }
   try {
     return await fn();
@@ -51,7 +58,8 @@ async function attempt(fn, { busyLabel } = {}) {
     toast(e.message, true);
     return undefined;
   } finally {
-    if (busyLabel) { state.busy = null; renderHeader(); }
+    opsInFlight--;
+    if (state.busy && opsInFlight === 0 && !gameStarting()) { state.busy = null; renderHeader(); }
   }
 }
 
@@ -845,7 +853,9 @@ sky.onLaunchError((msg) => {
 
 // ---------- events from the main process
 sky.onProgress(({ label, fraction }) => {
-  state.busy = state.game.state === 'running' ? null : { label, fraction };
+  if (state.game.state === 'running') state.busy = null;
+  else if (opsInFlight > 0 || gameStarting()) state.busy = { label, fraction };
+  else return; // arrived after the work finished
   renderHeader();
 });
 
