@@ -57,7 +57,7 @@ async function attempt(fn, { busyLabel } = {}) {
 
 const current = () => state.instances.find((i) => i.id === state.selectedId) || null;
 const presetOf = (inst) => state.presets.find((p) => p.id === inst.presetId);
-const loaderName = (l) => (l === 'fabric' ? 'Fabric' : 'Forge');
+const loaderName = (l) => ({ fabric: 'Fabric', neoforge: 'NeoForge' }[l] || 'Forge');
 const fmtCount = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n));
 function fmtAgo(iso) {
   const days = Math.floor((Date.now() - new Date(iso)) / 864e5);
@@ -333,7 +333,9 @@ function shaderSection(inst) {
         if (added && added.length) { toast(`Added ${added.length} shader pack${added.length === 1 ? '' : 's'}`); renderPanel(); }
       } })));
   if (inst.loader !== 'fabric') {
-    return [title, h('p', { class: 'note shader-note', text: "Shaders on 1.8.9 need OptiFine, which SkyLaunch can't download for you. Modern profiles get shaders through Iris instead." })];
+    return [title, h('p', { class: 'note shader-note', text: inst.loader === 'neoforge'
+      ? 'SkyLaunch manages shaders on Fabric profiles only for now. You can still add Iris for NeoForge from Browse.'
+      : "Shaders on 1.8.9 need OptiFine, which SkyLaunch can't download for you. Modern profiles get shaders through Iris instead." })];
   }
   if (!sh.packs.length) {
     return [title, h('p', { class: 'note shader-note', text: 'No shader packs yet. Browse shaders, or drag a shader .zip here. Iris (the shader mod) is added for you.' })];
@@ -360,7 +362,9 @@ function clientRow(inst, status) {
   const sub = {
     on: 'Press Right Shift in game for mods and the HUD editor.',
     off: 'Turned off for this profile.',
-    'wrong-version': `Built for Minecraft 26.2 Fabric and 1.8.9 Forge. Switch this profile to 26.2 in Settings to use it.`,
+    'wrong-version': inst.loader === 'neoforge'
+      ? 'Not available on NeoForge yet. It runs on 26.2 Fabric and 1.8.9 Forge profiles.'
+      : `Built for Minecraft 26.2 Fabric and 1.8.9 Forge. Switch this profile to 26.2 in Settings to use it.`,
     'not-built': 'Not included in this copy of SkyLaunch. See client-mod/README.md to build it.',
   }[status];
   const usable = status === 'on' || status === 'off';
@@ -418,7 +422,7 @@ panelEl.addEventListener('drop', async (e) => {
   const jars = all.filter((p) => /\.jar$/i.test(p));
   const zips = all.filter((p) => /\.zip$/i.test(p));
   if (!jars.length && !zips.length) return toast('Drop .jar mods or .zip shader packs.', true);
-  if (zips.length && inst.loader !== 'fabric') return toast('Shader packs need a modern (Fabric) profile.', true);
+  if (zips.length && inst.loader !== 'fabric') return toast('Shader packs need a Fabric profile.', true);
   let count = 0;
   if (jars.length) { const a = await attempt(() => sky.mods.addFiles(inst.id, jars)); if (a) count += a.length; }
   if (zips.length) { const a = await attempt(() => sky.shaders.addFiles(inst.id, zips)); if (a) count += a.length; }
@@ -476,8 +480,10 @@ async function renderBrowse(panel, inst) {
     h('button', { role: 'tab', 'aria-selected': String(b.type === 'shader'), onclick: () => setType('shader'), text: 'Shaders' }));
   if (b.type === 'shader' && inst.loader !== 'fabric') {
     panel.replaceChildren(seg, h('div', { class: 'empty' },
-      h('strong', { text: 'Shaders need a modern profile' }),
-      "On 1.8.9, shaders need OptiFine, which SkyLaunch can't download for you. Make a modern (Fabric) profile and SkyLaunch handles shaders through Iris."));
+      h('strong', { text: inst.loader === 'neoforge' ? 'Shaders need a Fabric profile' : 'Shaders need a modern profile' }),
+      inst.loader === 'neoforge'
+        ? 'SkyLaunch manages shaders on Fabric profiles only for now. Make a modern (Fabric) profile and SkyLaunch handles shaders through Iris.'
+        : "On 1.8.9, shaders need OptiFine, which SkyLaunch can't download for you. Make a modern (Fabric) profile and SkyLaunch handles shaders through Iris."));
     return;
   }
   const search = h('input', {
@@ -604,7 +610,7 @@ async function renderSettings(panel, inst) {
   const name = h('input', { class: 'input', value: inst.name, maxlength: 40, onchange: (e) => e.target.value.trim() && save({ name: e.target.value.trim() }) });
 
   let version;
-  if (inst.loader === 'fabric') {
+  if (inst.loader !== 'forge') {
     version = h('select', { class: 'input', disabled: true }, h('option', { text: inst.mcVersion }));
     sky.presets.versions(inst.presetId).then((vs) => {
       version.replaceChildren(...vs.map((v) => h('option', { value: v, selected: v === inst.mcVersion, text: v })));
@@ -634,7 +640,7 @@ async function renderSettings(panel, inst) {
   panel.replaceChildren(h('div', { class: 'form' },
     field('Name', name),
     field('Minecraft version', version,
-      inst.loader === 'fabric' ? `Versions every ${preset ? preset.name : 'preset'} mod supports. Changing it re-downloads mods.` : null),
+      inst.loader !== 'forge' ? `Versions every ${preset ? preset.name : 'preset'} mod supports. Changing it re-downloads mods.` : null),
     field('Memory', h('div', { class: 'range' }, mem, memOut), '4 GB suits most SkyBlock setups.'),
     h('label', { class: 'check' },
       h('input', { type: 'checkbox', checked: inst.autoJoin, onchange: (e) => save({ autoJoin: e.target.checked }) }),
@@ -693,7 +699,9 @@ function openNewProfile() {
     try {
       const vs = await sky.presets.versions(chosen.id);
       versionSelect.replaceChildren(
-        h('option', { value: '', text: vs[0] ? `Newest supported (${vs[0]})` : 'Newest supported' }),
+        h('option', { value: '', text: chosen.defaultVersion && vs.includes(chosen.defaultVersion)
+          ? `Recommended (${chosen.defaultVersion})`
+          : vs[0] ? `Newest supported (${vs[0]})` : 'Newest supported' }),
         ...vs.map((v) => h('option', { value: v, text: v })));
     } catch { /* keep default */ }
     versionSelect.disabled = false;
@@ -732,6 +740,7 @@ function openNewProfile() {
       h('h2', { text: 'New profile' }),
       h('p', { text: 'Pick a starting point. You can change mods any time.' }),
       ...group('Modern Minecraft, Fabric', 'modern'),
+      ...group('NeoForge (1.21.1 by default)', 'neoforge'),
       ...group('Minecraft 1.8.9, Forge', 'legacy'),
       h('div', { class: 'form' }, h('div', { class: 'field' }, h('span', { class: 'label', text: 'Name' }), name), versionField)),
     h('div', { class: 'dlg-foot' }, h('button', { class: 'btn', text: 'Cancel', onclick: () => d.close() }), create));

@@ -51,22 +51,29 @@ async function launch(id, hooks) {
   progress('Signing in', 0);
   const authorization = await auth.launchAuth();
 
-  progress('Setting up the mod loader', 0);
-  const version = { number: inst.mcVersion, type: 'release' };
-  let forge;
-  if (inst.loader === 'fabric') {
-    const { customId, loaderVersion } = await loaders.ensureFabric(inst.mcVersion, inst.loaderVersion);
-    version.custom = customId;
-    log(`[SkyLaunch] Fabric Loader ${loaderVersion}`);
-  } else {
-    ({ forgeJar: forge } = await loaders.ensureForge189());
-  }
-
+  // Java comes first: the NeoForge installer needs it to run.
   let javaPath = inst.javaPath || settings.javaPath;
   if (!javaPath) {
     const major = await java.requiredJavaMajor(inst.mcVersion);
     javaPath = await java.ensureJava(major, progress);
     log(`[SkyLaunch] Using Java ${major}: ${javaPath}`);
+  }
+
+  progress('Setting up the mod loader', 0);
+  const version = { number: inst.mcVersion, type: 'release' };
+  let forge;
+  let loaderJvmArgs = [];
+  if (inst.loader === 'fabric') {
+    const { customId, loaderVersion } = await loaders.ensureFabric(inst.mcVersion, inst.loaderVersion);
+    version.custom = customId;
+    log(`[SkyLaunch] Fabric Loader ${loaderVersion}`);
+  } else if (inst.loader === 'neoforge') {
+    const { customId, loaderVersion } = await loaders.ensureNeoForge(inst.mcVersion, inst.loaderVersion, javaPath, { progress, log });
+    version.custom = customId;
+    loaderJvmArgs = loaders.neoforgeJvmArgs(customId);
+    log(`[SkyLaunch] NeoForge ${loaderVersion}`);
+  } else {
+    ({ forgeJar: forge } = await loaders.ensureForge189());
   }
 
   const memoryMb = inst.memoryMb || settings.defaultMemoryMb || 4096;
@@ -79,7 +86,7 @@ async function launch(id, hooks) {
     javaPath,
     memory: { max: `${memoryMb}M`, min: `${Math.min(1024, memoryMb)}M` },
     // The in-game menu matches the launcher's theme unless the player picks another one.
-    customArgs: [...(hooks.theme ? [`-Dskylaunch.theme=${hooks.theme}`] : []), ...splitArgs(inst.jvmArgs || settings.jvmArgs)],
+    customArgs: [...loaderJvmArgs, ...(hooks.theme ? [`-Dskylaunch.theme=${hooks.theme}`] : []), ...splitArgs(inst.jvmArgs || settings.jvmArgs)],
     overrides: { gameDirectory: paths.instanceDir(id), detached: false },
     window: settings.width && settings.height ? { width: String(settings.width), height: String(settings.height) } : undefined,
   };

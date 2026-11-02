@@ -8,6 +8,7 @@ A Minecraft launcher for Hypixel SkyBlock. Sign in with Microsoft, pick a preset
 - **Profiles**, each with its own mods, configs, screenshots and memory setting.
 - **Presets** for both setups:
   - Modern Fabric: Skyblocker, SkyHanni, Firmament, Performance only, Empty
+  - NeoForge (1.21.1 by default, any NeoForge version can be picked): Performance, Empty
   - 1.8.9 Forge: NEU + SkyHanni, SkyHanni, Empty
 - **Browse Modrinth** tab: search, sort, filter by category (or SkyBlock), and install the newest build or pick an exact version. Required dependencies come along automatically. Results only show mods that fit the profile's Minecraft version and loader.
 - **Shaders from Modrinth**: on the Browse tab, switch to **Shaders** to search packs that work with the profile's Minecraft version. Install adds the pack plus Iris (the shader mod, which brings Sodium), and switches it on. Pick which pack is in use, or turn shaders off, under **Shader packs** on the Mods tab. Your own `.zip` packs can be dropped on the window. Modern (Fabric) profiles only; 1.8.9 shaders need OptiFine, which can't be downloaded automatically.
@@ -81,7 +82,7 @@ The repo has to be **public** for other people's launchers to see releases.
 | `src/core/presets.js` | Preset definitions (Modrinth slugs) — edit this to add your own presets |
 | `src/core/modrinth.js` | Version lookup, dependency resolution, search |
 | `src/core/instances.js` | Profiles and their mods |
-| `src/core/loaders.js` | Fabric (meta.fabricmc.net) and Forge 1.8.9 install |
+| `src/core/loaders.js` | Fabric (meta.fabricmc.net), NeoForge (official installer from maven.neoforged.net) and Forge 1.8.9 install |
 | `src/core/java.js` | Picks and downloads the right Java |
 | `src/core/auth.js` | Microsoft sign-in via `msmc` |
 | `src/core/launch.js` | Puts it together and starts the game via `minecraft-launcher-core` |
@@ -99,3 +100,4 @@ Add an entry to `PRESETS` in `src/core/presets.js`. Mods are Modrinth slugs (the
 - **Releasing it publicly.** Sign-in uses msmc's default Microsoft app, which is fine for you and friends. Before distributing widely, register your own Azure app, request Minecraft API access from Mojang, and pass your client ID to `new Auth({ client_id: '…', redirect: '…' })` in `src/core/auth.js`.
 - **Newest Minecraft versions.** `minecraft-launcher-core` was last released in Dec 2024. If a brand-new Minecraft release changes its file format and fails to start, pick a slightly older version in Profile settings, or update the library.
 - **1.8.9 Forge** uses Forge 11.15.1.2318, the build every 1.8.9 SkyBlock mod targets.
+- **NeoForge** profiles run NeoForge's own installer the first time they're played (into the shared game folder), then launch from the version JSON it writes. The SkyLaunch Client isn't built for NeoForge yet.

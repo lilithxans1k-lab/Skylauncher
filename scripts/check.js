@@ -51,6 +51,7 @@ global.fetch = async (url) => {
   assert.deepStrictEqual(r2.missing, ['skyblocker-liap']);
   console.log('modrinth logic ok');
   await shaderTest();
+  await neoforgeTest();
 })().catch((e) => { console.error(e); process.exit(1); });
 
 // Shader packs: install from a fake Modrinth, pick one, turn off, remove.
@@ -88,4 +89,32 @@ async function shaderTest() {
   assert.strictEqual(instances.listShaders(inst.id).packs.length, 0, 'removed');
   fs2.rmSync(tmp, { recursive: true, force: true });
   console.log('shader packs ok');
+}
+
+// NeoForge version numbering and JVM argument placeholders.
+async function neoforgeTest() {
+  const os = require('os');
+  const fs2 = require('fs');
+  const paths = require('../src/core/paths');
+  paths.init(fs2.mkdtempSync(path.join(os.tmpdir(), 'skylaunch-check-')));
+  const loaders = require('../src/core/loaders');
+  assert.strictEqual(loaders.neoforgeGameVersion('21.1.172'), '1.21.1');
+  assert.strictEqual(loaders.neoforgeGameVersion('21.0.167'), '1.21');
+  assert.strictEqual(loaders.neoforgeGameVersion('20.4.237'), '1.20.4');
+  assert.strictEqual(loaders.neoforgeGameVersion('21.1.1-beta'), '1.21.1');
+  assert.strictEqual(loaders.neoforgeGameVersion('26.1.0.3-beta'), '26.1');
+  assert.strictEqual(loaders.neoforgeGameVersion('20.1.5'), null);
+  const id = 'neoforge-21.1.172';
+  const dir = path.join(paths.root(), 'versions', id);
+  fs2.mkdirSync(dir, { recursive: true });
+  fs2.writeFileSync(path.join(dir, `${id}.json`), JSON.stringify({ arguments: { jvm: [
+    '-DignoreList=client-extra,${version_name}.jar', '-DlibraryDirectory=${library_directory}',
+    '-p', '${library_directory}/a.jar${classpath_separator}${library_directory}/b.jar', { rules: [], value: 'x' },
+  ] } }));
+  const lib = path.join(paths.root(), 'libraries');
+  const sep = process.platform === 'win32' ? ';' : ':';
+  assert.deepStrictEqual(loaders.neoforgeJvmArgs(id), [
+    `-DignoreList=client-extra,${id}.jar`, `-DlibraryDirectory=${lib}`, '-p', `${lib}/a.jar${sep}${lib}/b.jar`,
+  ]);
+  console.log('neoforge logic ok');
 }

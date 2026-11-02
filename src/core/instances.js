@@ -8,6 +8,7 @@ const modrinth = require('./modrinth');
 const { download, getJson } = require('./net');
 const { getPreset, FORGE_189 } = require('./presets');
 const clientMod = require('./clientmod');
+const loaders = require('./loaders');
 
 const metaFile = (id) => path.join(paths.instanceDir(id), 'instance.json');
 
@@ -51,6 +52,13 @@ async function versionChoices(presetId) {
   const preset = getPreset(presetId);
   if (!preset) throw new Error('Unknown preset.');
   if (preset.era === 'legacy') return [FORGE_189.mcVersion];
+  if (preset.loader === 'neoforge') {
+    // Versions NeoForge itself supports, narrowed to ones the preset's mods have builds for.
+    const nf = await loaders.neoforgeGameVersions();
+    if (!preset.required.length) return nf;
+    const mods = await modrinth.versionsForPicker(preset.required, preset.loader);
+    return nf.filter((v) => mods.includes(v));
+  }
   return modrinth.versionsForPicker(preset.required, preset.loader);
 }
 
@@ -63,6 +71,11 @@ async function create({ name, presetId, mcVersion }) {
   if (!preset) throw new Error('Unknown preset.');
 
   let version = preset.mcVersion || mcVersion;
+  if (!version && preset.loader === 'neoforge') {
+    const choices = await versionChoices(presetId);
+    version = choices.includes(preset.defaultVersion) ? preset.defaultVersion : choices[0] || null;
+    if (!version) throw new Error(`No Minecraft version fits the ${preset.name} preset right now.`);
+  }
   if (!version) {
     // Prefer the version the SkyLaunch in-game client is built for, when the mods support it.
     const choices = await modrinth.versionsForPicker(preset.required, preset.loader);
@@ -246,10 +259,10 @@ function removeMod(id, file) {
 /** Switch a modern profile to another Minecraft version and reinstall its mods. */
 async function changeVersion(id, mcVersion, onProgress) {
   const inst = get(id);
-  if (inst.loader !== 'fabric') throw new Error('1.8.9 profiles stay on 1.8.9.');
+  if (inst.loader === 'forge') throw new Error('1.8.9 profiles stay on 1.8.9.');
   const preset = getPreset(inst.presetId);
   // Check the preset works on the new version before touching any files.
-  if (preset) {
+  if (preset && preset.required.length) {
     onProgress('Checking mods for ' + mcVersion, 0);
     const { missing } = await modrinth.resolveMods({ required: preset.required }, inst.loader, mcVersion);
     if (missing.length) throw new Error(`No ${mcVersion} build exists for: ${missing.join(', ')}.`);
@@ -335,7 +348,9 @@ function listShaders(id) {
 async function addShader(id, slug, onProgress = () => {}, versionId = null, meta = {}) {
   const inst = get(id);
   if (inst.loader !== 'fabric') {
-    throw new Error('Shaders on 1.8.9 need OptiFine, which SkyLaunch can\'t download for you. Use a modern profile for shaders.');
+    throw new Error(inst.loader === 'neoforge'
+      ? 'SkyLaunch manages shaders on Fabric profiles only for now.'
+      : 'Shaders on 1.8.9 need OptiFine, which SkyLaunch can\'t download for you. Use a modern profile for shaders.');
   }
   if (!hasIris(inst)) {
     onProgress('Adding Iris so shaders can run', 0);
